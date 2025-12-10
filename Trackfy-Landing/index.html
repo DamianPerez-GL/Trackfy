@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Trackfy</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+body {
+  min-height: 100vh;
+  background: #000;
+  font-family: 'Space Grotesk', sans-serif;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  position: relative;
+}
+
+/* Video de fondo */
+.video-container {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: -1;
+  overflow: hidden;
+}
+
+.video-bg {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  min-width: 100%;
+  min-height: 100%;
+  width: auto;
+  height: auto;
+  object-fit: cover;
+}
+
+/* Overlay sutil para que el texto destaque */
+.overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: radial-gradient(ellipse at center, transparent 30%, rgba(0,0,0,0.4) 100%);
+  z-index: 0;
+  pointer-events: none;
+}
+
+.content {
+  position: relative;
+  z-index: 10;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 40px;
+  padding: 20px;
+}
+
+/* Tagline misterioso */
+.tagline {
+  color: rgba(255, 255, 255, 0.9);
+  font-size: 22px;
+  font-weight: 300;
+  letter-spacing: 5px;
+  text-transform: uppercase;
+  text-align: center;
+  animation: fadeIn 2s ease-out;
+  text-shadow: 0 0 30px rgba(34, 197, 94, 0.3);
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* Formulario */
+.form-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  width: 100%;
+  max-width: 360px;
+  animation: fadeIn 2s ease-out 0.5s both;
+}
+
+.email-input {
+  width: 100%;
+  padding: 18px 24px;
+  background: rgba(0, 0, 0, 0.6);
+  border: 1px solid rgba(34, 197, 94, 0.3);
+  border-radius: 12px;
+  color: #fff;
+  font-size: 16px;
+  font-family: 'Space Grotesk', sans-serif;
+  outline: none;
+  transition: all 0.3s ease;
+  backdrop-filter: blur(10px);
+}
+
+.email-input::placeholder {
+  color: rgba(255, 255, 255, 0.35);
+}
+
+.email-input:focus {
+  border-color: rgba(34, 197, 94, 0.6);
+  background: rgba(0, 0, 0, 0.8);
+  box-shadow: 0 0 30px rgba(34, 197, 94, 0.15);
+}
+
+.submit-btn {
+  width: 100%;
+  padding: 18px 32px;
+  background: rgba(34, 197, 94, 0.1);
+  border: 1px solid rgba(34, 197, 94, 0.5);
+  border-radius: 12px;
+  color: #22c55e;
+  font-size: 14px;
+  font-weight: 500;
+  letter-spacing: 3px;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  font-family: 'Space Grotesk', sans-serif;
+  backdrop-filter: blur(10px);
+}
+
+.submit-btn:hover {
+  background: rgba(34, 197, 94, 0.2);
+  border-color: #22c55e;
+  box-shadow: 0 0 40px rgba(34, 197, 94, 0.25);
+  transform: translateY(-2px);
+}
+
+.privacy {
+  color: rgba(255, 255, 255, 0.25);
+  font-size: 11px;
+  text-align: center;
+  margin-top: 8px;
+}
+
+.privacy a {
+  color: rgba(34, 197, 94, 0.5);
+  text-decoration: none;
+  transition: color 0.3s ease;
+}
+
+.privacy a:hover {
+  color: rgba(34, 197, 94, 0.8);
+}
+
+/* Responsive */
+@media (max-width: 480px) {
+  .tagline { font-size: 18px; letter-spacing: 4px; }
+  .form-container { max-width: 300px; padding: 0 20px; }
+}
+</style>
+</head>
+<body>
+
+<!-- Video de fondo con Fy -->
+<div class="video-container">
+  <video class="video-bg" autoplay muted loop playsinline>
+    <source src="fy-video.mp4" type="video/mp4">
+  </video>
+</div>
+
+<!-- Overlay sutil -->
+<div class="overlay"></div>
+
+<!-- Contenido -->
+<div class="content">
+  <p class="tagline">El guardian se acerca...</p>
+  
+  <form class="form-container" id="email-form">
+    <input type="email" class="email-input" id="email" name="email" placeholder="tu@email.com" required>
+    <button type="submit" class="submit-btn" id="submit-btn">Descúbrelo primero</button>
+    <p class="privacy">Al unirte aceptas nuestra <a href="#">política de privacidad</a></p>
+  </form>
+</div>
+
+<script>
+// Asegurar que el video se reproduzca
+document.addEventListener('DOMContentLoaded', function() {
+  const video = document.querySelector('.video-bg');
+  if (video) {
+    video.play().catch(function(error) {
+      console.log('Autoplay bloqueado:', error);
+    });
+  }
+});
+
+// Enviar email por POST
+const API_ENDPOINT = 'https://n8n.greenlock.tech/webhook-test/trackfy-closed-beta'; // Cambia esto por tu endpoint
+
+document.getElementById('email-form').addEventListener('submit', async function(e) {
+  e.preventDefault();
+
+  const email = document.getElementById('email').value;
+  const btn = document.getElementById('submit-btn');
+  const originalText = btn.textContent;
+
+  btn.textContent = 'Enviando...';
+  btn.disabled = true;
+
+  try {
+    const response = await fetch(API_ENDPOINT, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ email: email })
+    });
+
+    if (response.ok) {
+      btn.textContent = '¡Registrado!';
+      btn.style.borderColor = '#22c55e';
+      btn.style.background = 'rgba(34, 197, 94, 0.3)';
+      document.getElementById('email').value = '';
+    } else {
+      throw new Error('Error en el servidor');
+    }
+  } catch (error) {
+    btn.textContent = 'Error, intenta de nuevo';
+    btn.style.borderColor = '#ef4444';
+    setTimeout(() => {
+      btn.textContent = originalText;
+      btn.style.borderColor = '';
+      btn.disabled = false;
+    }, 2000);
+  }
+});
+</script>
+
+</body>
+</html>

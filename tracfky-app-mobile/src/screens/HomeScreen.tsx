@@ -1,19 +1,20 @@
 import React from 'react';
-import { 
-  View, 
-  Text, 
-  StyleSheet, 
-  ScrollView, 
+import {
+  View,
+  Text,
+  StyleSheet,
+  ScrollView,
   Image,
   TouchableOpacity,
-  SafeAreaView,
-  StatusBar 
+  StatusBar
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as Animatable from 'react-native-animatable';
 import { Ionicons } from '@expo/vector-icons';
 import { StackNavigationProp } from '@react-navigation/stack';
 import ActionCard from '../components/ActionCard';
+import ParticleBackground from '../components/ParticleBackground';
 import { COLORS, SPACING, FONT_SIZES, BORDER_RADIUS } from '../constants/theme';
 import { RootStackParamList, ChatContext } from '../types';
 
@@ -29,28 +30,25 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
   };
 
   return (
-    <SafeAreaView style={styles.safeArea}>
+    <SafeAreaView style={styles.safeArea} edges={['top']}>
       <StatusBar barStyle="light-content" backgroundColor={COLORS.background} />
-      <ScrollView 
+      <ParticleBackground />
+      <ScrollView
         style={styles.container}
         contentContainerStyle={styles.contentContainer}
         showsVerticalScrollIndicator={false}
       >
         {/* Saludo de Fy */}
         <Animatable.View animation="fadeInDown" duration={800}>
-          <LinearGradient
-            colors={[COLORS.dark, COLORS.darkSecondary]}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-            style={styles.greeting}
-          >
+          <View style={styles.greeting}>
             <View style={styles.greetingContent}>
-              <Animatable.View 
-                animation="pulse" 
-                iterationCount="infinite" 
+              <Animatable.View
+                animation="pulse"
+                iterationCount="infinite"
                 duration={3000}
+                style={styles.fyAvatarContainer}
               >
-                <Image 
+                <Image
                   source={require('../../assets/fy-logo.png')}
                   style={styles.fyAvatar}
                   resizeMode="contain"
@@ -58,10 +56,11 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
               </Animatable.View>
               <View style={styles.greetingText}>
                 <Text style={styles.greetingTitle}>¡Hola! 👋</Text>
-                <Text style={styles.greetingSubtitle}>¿En qué puedo ayudarte hoy?</Text>
+                <Text style={styles.greetingSubtitle}>Soy Fy, tu asistente</Text>
+                <Text style={styles.greetingSubtitle}>¿En qué puedo ayudarte?</Text>
               </View>
             </View>
-          </LinearGradient>
+          </View>
         </Animatable.View>
 
         {/* Verificaciones rápidas */}
@@ -146,19 +145,28 @@ const styles = StyleSheet.create({
     paddingBottom: 100,
   },
   greeting: {
+    backgroundColor: '#000000',
     padding: SPACING.xxl,
     borderRadius: BORDER_RADIUS.xl,
     marginBottom: SPACING.xl,
-    overflow: 'hidden',
+    borderWidth: 2,
+    borderColor: COLORS.primary,
+    shadowColor: COLORS.primary,
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.3,
+    shadowRadius: 10,
+    elevation: 10,
   },
   greetingContent: {
     flexDirection: 'row',
     alignItems: 'center',
   },
-  fyAvatar: {
-    width: 60,
-    height: 60,
+  fyAvatarContainer: {
     marginRight: SPACING.lg,
+  },
+  fyAvatar: {
+    width: 100,
+    height: 100,
   },
   greetingText: {
     flex: 1,
@@ -171,8 +179,9 @@ const styles = StyleSheet.create({
   },
   greetingSubtitle: {
     color: COLORS.primary,
-    fontSize: FONT_SIZES.sm,
+    fontSize: FONT_SIZES.md,
     fontWeight: '600',
+    marginTop: 2,
   },
   sectionTitle: {
     color: COLORS.textTertiary,

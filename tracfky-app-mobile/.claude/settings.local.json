@@ -5,7 +5,8 @@
       "Bash(npx expo install:*)",
       "Bash(npm install:*)",
       "Bash(npx expo prebuild:*)",
-      "Bash(node generate-assets.js:*)"
+      "Bash(node generate-assets.js:*)",
+      "Bash(npx react-native-clean-project:*)"
     ],
     "deny": [],
     "ask": []

@@ -8,11 +8,12 @@ import {
   ScrollView,
   KeyboardAvoidingView,
   Platform,
-  SafeAreaView,
   StatusBar,
   Image,
   ActivityIndicator,
+  Alert,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import * as Animatable from 'react-native-animatable';
@@ -20,6 +21,7 @@ import { StackNavigationProp } from '@react-navigation/stack';
 import { RouteProp } from '@react-navigation/native';
 import ChatMessage from '../components/ChatMessage';
 import { analyzeContent } from '../services/securityService';
+import { useSubscription } from '../context/SubscriptionContext';
 import { COLORS, SPACING, FONT_SIZES, BORDER_RADIUS } from '../constants/theme';
 import { RootStackParamList, ChatMessage as ChatMessageType } from '../types';
 
@@ -33,6 +35,7 @@ interface ChatScreenProps {
 
 const ChatScreen: React.FC<ChatScreenProps> = ({ route, navigation }) => {
   const { context } = route.params || {};
+  const { canUseFeature, incrementUsage, getRemainingUses, subscription } = useSubscription();
   const [messages, setMessages] = useState<ChatMessageType[]>([]);
   const [inputText, setInputText] = useState('');
   const [isAnalyzing, setIsAnalyzing] = useState(false);
@@ -59,6 +62,23 @@ const ChatScreen: React.FC<ChatScreenProps> = ({ route, navigation }) => {
   const handleSend = async () => {
     if (!inputText.trim()) return;
 
+    // Verificar límite para plan gratuito
+    if (!canUseFeature('chat')) {
+      const remaining = getRemainingUses('chat');
+      Alert.alert(
+        'Límite alcanzado',
+        `Has alcanzado el límite de ${subscription === 'free' ? '3 mensajes/día' : 'mensajes'} del plan gratuito.\n\n¿Quieres mejorar a Premium para mensajes ilimitados?`,
+        [
+          { text: 'Ahora no', style: 'cancel' },
+          {
+            text: 'Ver planes',
+            onPress: () => navigation.navigate('HomeMain')
+          }
+        ]
+      );
+      return;
+    }
+
     const userMessage: ChatMessageType = {
       id: Date.now().toString(),
       text: inputText,
@@ -70,17 +90,20 @@ const ChatScreen: React.FC<ChatScreenProps> = ({ route, navigation }) => {
     setInputText('');
     setIsAnalyzing(true);
 
+    // Incrementar contador de uso
+    await incrementUsage('chat');
+
     try {
       const result = await analyzeContent(inputText);
-      
+
       let responseText = result.analysis.message + '\n\n';
-      
+
       if (result.analysis.details) {
         result.analysis.details.forEach(detail => {
           responseText += `• ${detail}\n`;
         });
       }
-      
+
       if (result.analysis.advice) {
         responseText += `\n${result.analysis.advice}`;
       }
@@ -93,10 +116,24 @@ const ChatScreen: React.FC<ChatScreenProps> = ({ route, navigation }) => {
       };
 
       setMessages(prev => [...prev, assistantMessage]);
+
+      // Mostrar advertencia si quedan pocos mensajes
+      const remaining = getRemainingUses('chat');
+      if (subscription === 'free' && remaining <= 1 && remaining > 0) {
+        setTimeout(() => {
+          const warningMessage: ChatMessageType = {
+            id: Date.now().toString(),
+            text: `Solo te queda ${remaining} mensaje${remaining > 1 ? 's' : ''} hoy con el plan gratuito. Mejora a Premium para mensajes ilimitados.`,
+            isUser: false,
+            timestamp: new Date(),
+          };
+          setMessages(prev => [...prev, warningMessage]);
+        }, 1000);
+      }
     } catch (error) {
       const errorMessage: ChatMessageType = {
         id: (Date.now() + 1).toString(),
-        text: '😕 Lo siento, tuve un problema al analizar eso. ¿Puedes intentarlo de nuevo?',
+        text: 'Lo siento, tuve un problema al analizar eso. ¿Puedes intentarlo de nuevo?',
         isUser: false,
         timestamp: new Date(),
       };
@@ -114,26 +151,21 @@ const ChatScreen: React.FC<ChatScreenProps> = ({ route, navigation }) => {
   ];
 
   return (
-    <SafeAreaView style={styles.safeArea}>
+    <SafeAreaView style={styles.safeArea} edges={['top']}>
       <StatusBar barStyle="light-content" backgroundColor={COLORS.background} />
       
       {/* Header */}
-      <LinearGradient
-        colors={[COLORS.dark, COLORS.darkSecondary]}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
-        style={styles.header}
-      >
+      <View style={styles.header}>
         <TouchableOpacity onPress={() => navigation.goBack()}>
           <Ionicons name="arrow-back" size={24} color={COLORS.textPrimary} />
         </TouchableOpacity>
         <View style={styles.headerCenter}>
-          <Animatable.View 
-            animation="pulse" 
-            iterationCount="infinite" 
+          <Animatable.View
+            animation="pulse"
+            iterationCount="infinite"
             duration={3000}
           >
-            <Image 
+            <Image
               source={require('../../assets/fy-logo.png')}
               style={styles.headerAvatar}
               resizeMode="contain"
@@ -149,7 +181,17 @@ const ChatScreen: React.FC<ChatScreenProps> = ({ route, navigation }) => {
         <TouchableOpacity>
           <Ionicons name="ellipsis-vertical" size={24} color={COLORS.textPrimary} />
         </TouchableOpacity>
-      </LinearGradient>
+      </View>
+
+      {/* Limit Banner for Free Plan */}
+      {subscription === 'free' && (
+        <Animatable.View animation="fadeIn" duration={400} style={styles.limitBanner}>
+          <Ionicons name="information-circle" size={18} color={COLORS.warning} />
+          <Text style={styles.limitText}>
+            {getRemainingUses('chat')} de 3 mensajes restantes hoy
+          </Text>
+        </Animatable.View>
+      )}
 
       {/* Context Banner */}
       {context && (
@@ -166,14 +208,14 @@ const ChatScreen: React.FC<ChatScreenProps> = ({ route, navigation }) => {
               end={{ x: 1, y: 1 }}
               style={styles.contextIcon}
             >
-              <Ionicons 
+              <Ionicons
                 name={
-                  context.type === 'link' ? 'link-outline' : 
-                  context.type === 'email' ? 'mail-outline' : 
+                  context.type === 'link' ? 'link-outline' :
+                  context.type === 'email' ? 'mail-outline' :
                   'call-outline'
-                } 
-                size={22} 
-                color={COLORS.textPrimary} 
+                }
+                size={22}
+                color={COLORS.textPrimary}
               />
             </LinearGradient>
             <View style={styles.contextText}>
@@ -186,9 +228,9 @@ const ChatScreen: React.FC<ChatScreenProps> = ({ route, navigation }) => {
         </Animatable.View>
       )}
 
-      <KeyboardAvoidingView 
+      <KeyboardAvoidingView
         style={styles.container}
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}
       >
         {/* Messages */}
@@ -292,8 +334,14 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingHorizontal: SPACING.xl,
     paddingVertical: SPACING.lg,
-    borderBottomWidth: 1,
+    backgroundColor: '#000000',
+    borderBottomWidth: 2,
     borderBottomColor: COLORS.primary,
+    shadowColor: COLORS.primary,
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.3,
+    shadowRadius: 10,
+    elevation: 10,
   },
   headerCenter: {
     flex: 1,
@@ -315,6 +363,26 @@ const styles = StyleSheet.create({
     color: COLORS.primary,
     fontSize: FONT_SIZES.sm,
     fontWeight: '600',
+  },
+  limitBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#2a1f0d',
+    paddingHorizontal: SPACING.lg,
+    paddingVertical: SPACING.md,
+    marginHorizontal: SPACING.xl,
+    marginTop: SPACING.md,
+    marginBottom: SPACING.sm,
+    borderRadius: BORDER_RADIUS.md,
+    borderWidth: 1.5,
+    borderColor: COLORS.warning,
+  },
+  limitText: {
+    color: COLORS.warning,
+    fontSize: FONT_SIZES.sm,
+    marginLeft: SPACING.sm,
+    fontWeight: '700',
+    flex: 1,
   },
   contextBanner: {
     flexDirection: 'row',
