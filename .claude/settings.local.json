@@ -1,7 +1,11 @@
 {
   "permissions": {
     "allow": [
-      "Bash(python -m spacy:*)"
+      "Bash(python -m spacy:*)",
+      "Bash(mkdir -p:*)",
+      "Bash(go mod tidy:*)",
+      "Bash(docker --version:*)",
+      "Bash(docker-compose up:*)"
     ],
     "deny": [],
     "ask": []
