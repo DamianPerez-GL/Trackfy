@@ -1,0 +1,141 @@
+# ===========================================
+# Trackfy - Docker Compose
+# Flujo: App -> Fy-Engine -> Fy-Analysis
+# ===========================================
+
+services:
+  # -----------------------------------------
+  # Fy-Engine - Orquestador con LLM (Python)
+  # Puerto: 8082
+  # -----------------------------------------
+  fy-engine:
+    build:
+      context: ./fy-engine/fy-engine
+      dockerfile: Dockerfile
+    container_name: fy-engine
+    ports:
+      - "8082:8082"
+    environment:
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - ANALYSIS_SERVICE_URL=http://fy-analysis:9090
+    restart: unless-stopped
+    networks:
+      - trackfy-network
+    depends_on:
+      - redis
+      - fy-analysis
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8082/health')"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+
+  # -----------------------------------------
+  # Fy-Analysis - Motor de Analisis (Go)
+  # Puerto: 9090
+  # -----------------------------------------
+  fy-analysis:
+    build:
+      context: ./fy-analysis
+      dockerfile: Dockerfile
+    container_name: fy-analysis
+    ports:
+      - "9090:9090"
+    environment:
+      - PORT=9090
+      - ENVIRONMENT=development
+      - LOG_LEVEL=debug
+      - RATE_LIMIT=100
+      # URL Engine - API Keys (opcional)
+      - GOOGLE_WEBRISK_KEY=${GOOGLE_WEBRISK_KEY:-}
+      - URLSCAN_KEY=${URLSCAN_KEY:-}
+      - PHISHTANK_KEY=${PHISHTANK_KEY:-}
+      # URL Engine - DB Paths
+      - URLHAUS_DB_PATH=/data/urlhaus.csv
+      - PHISHTANK_DB_PATH=/data/phishtank.json
+      - ENABLE_DB_SYNC=true
+      # PostgreSQL Local DB
+      - DATABASE_URL=postgres://trackfy:trackfy_secret@postgres:5432/fy_threats?sslmode=disable
+      - ENABLE_LOCAL_DB=true
+    volumes:
+      - urlengine-data:/data
+    restart: unless-stopped
+    networks:
+      - trackfy-network
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:9090/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
+  # -----------------------------------------
+  # PostgreSQL - Base de datos de amenazas
+  # Puerto: 5432
+  # -----------------------------------------
+  postgres:
+    image: postgres:16-alpine
+    container_name: fy-postgres
+    ports:
+      - "5432:5432"
+    environment:
+      - POSTGRES_USER=trackfy
+      - POSTGRES_PASSWORD=trackfy_secret
+      - POSTGRES_DB=fy_threats
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+      - ./fy-analysis/scripts/init-db.sql:/docker-entrypoint-initdb.d/init-db.sql:ro
+    restart: unless-stopped
+    networks:
+      - trackfy-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U trackfy -d fy_threats"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+  # -----------------------------------------
+  # Redis - Cache y memoria de conversacion
+  # Puerto: 6379
+  # -----------------------------------------
+  redis:
+    image: redis:7-alpine
+    container_name: fy-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+    restart: unless-stopped
+    networks:
+      - trackfy-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+# -----------------------------------------
+# Volumes
+# -----------------------------------------
+volumes:
+  urlengine-data:
+    name: fy-analysis-data
+  postgres-data:
+    name: fy-postgres-data
+  redis-data:
+    name: fy-redis-data
+
+# -----------------------------------------
+# Networks
+# -----------------------------------------
+networks:
+  trackfy-network:
+    driver: bridge
+    name: trackfy-network

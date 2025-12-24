@@ -1,18 +1,30 @@
 package api
 
 import (
+	"time"
+
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/go-chi/cors"
 	"github.com/go-chi/httprate"
-	"time"
 
 	"github.com/trackfy/fy-analysis/internal/api/handlers"
 	customMiddleware "github.com/trackfy/fy-analysis/internal/api/middleware"
+	"github.com/trackfy/fy-analysis/internal/urlengine"
 )
 
-// NewRouter crea y configura el router de la API
+// RouterConfig configuración para el router
+type RouterConfig struct {
+	URLEngine *urlengine.Engine
+}
+
+// NewRouter crea y configura el router de la API (versión legacy)
 func NewRouter() *chi.Mux {
+	return NewRouterWithConfig(nil)
+}
+
+// NewRouterWithConfig crea el router con configuración del URL engine
+func NewRouterWithConfig(config *RouterConfig) *chi.Mux {
 	r := chi.NewRouter()
 
 	// Middleware global
@@ -40,6 +52,7 @@ func NewRouter() *chi.Mux {
 
 	// API v1
 	r.Route("/api/v1", func(r chi.Router) {
+		// Endpoints de análisis básico (legacy)
 		r.Route("/analyze", func(r chi.Router) {
 			emailHandler := handlers.NewEmailHandler()
 			urlHandler := handlers.NewURLHandler()
@@ -51,7 +64,33 @@ func NewRouter() *chi.Mux {
 			r.Post("/phone", phoneHandler.AnalyzePhone)
 			r.Post("/batch", batchHandler.AnalyzeBatch)
 		})
+
+		// URL Engine - Verificación avanzada con múltiples fuentes
+		if config != nil && config.URLEngine != nil {
+			urlEngineHandler := handlers.NewURLEngineHandler(config.URLEngine)
+
+			// Endpoint unificado de análisis (recomendado)
+			r.Post("/analyze", urlEngineHandler.Analyze)
+
+			// Endpoints legacy para compatibilidad
+			r.Route("/urlengine", func(r chi.Router) {
+				r.Post("/check", urlEngineHandler.CheckURL)
+				r.Get("/status", urlEngineHandler.GetStatus)
+				r.Post("/sync", urlEngineHandler.SyncDB)
+			})
+		}
 	})
+
+	// Endpoints para Fy-Engine (formato compatible con Python service)
+	// Estos endpoints están en la raíz para compatibilidad con fy-engine
+	if config != nil && config.URLEngine != nil {
+		fyHandler := handlers.NewFyEngineHandler(config.URLEngine)
+		r.Route("/analyze", func(r chi.Router) {
+			r.Post("/url", fyHandler.AnalyzeURL)
+			r.Post("/email", fyHandler.AnalyzeEmail)
+			r.Post("/phone", fyHandler.AnalyzePhone)
+		})
+	}
 
 	return r
 }

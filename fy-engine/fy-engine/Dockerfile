@@ -11,8 +11,8 @@ RUN apt-get update && apt-get install -y \
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Descargar modelo de spacy para español
-RUN python -m spacy download es_core_news_sm
+# Descargar modelo de spacy para español (usando pip directamente)
+RUN pip install https://github.com/explosion/spacy-models/releases/download/es_core_news_sm-3.7.0/es_core_news_sm-3.7.0-py3-none-any.whl
 
 # Copiar código
 COPY . .

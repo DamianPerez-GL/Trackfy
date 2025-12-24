@@ -1,1 +1,56 @@
+# Environment variables
+.env
+.env.*
 *.env
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+logs/
+
+# Dependencies
+node_modules/
+vendor/
+
+# Go
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+*.test
+*.out
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+.Python
+venv/
+.venv/
+*.egg-info/
+dist/
+build/
+
+# Docker
+docker-compose.override.yml
+
+# Data files (pueden ser grandes)
+*.csv
+*.json.gz
+data/
+
+# Credentials
+*.pem
+*.key
+credentials.json
+service-account.json

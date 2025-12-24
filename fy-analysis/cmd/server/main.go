@@ -13,6 +13,7 @@ import (
 
 	"github.com/trackfy/fy-analysis/internal/api"
 	"github.com/trackfy/fy-analysis/internal/config"
+	"github.com/trackfy/fy-analysis/internal/urlengine"
 )
 
 func main() {
@@ -27,8 +28,14 @@ func main() {
 		Str("environment", cfg.Environment).
 		Msg("Starting Fy-Analysis Service")
 
-	// Crear router
-	router := api.NewRouter()
+	// Inicializar URL Engine
+	urlEngine := initURLEngine(cfg)
+
+	// Crear router con URL Engine
+	routerConfig := &api.RouterConfig{
+		URLEngine: urlEngine,
+	}
+	router := api.NewRouterWithConfig(routerConfig)
 
 	// Configurar servidor
 	server := &http.Server{
@@ -58,6 +65,11 @@ func main() {
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 
+	// Detener URL Engine
+	if urlEngine != nil {
+		urlEngine.Stop()
+	}
+
 	if err := server.Shutdown(ctx); err != nil {
 		log.Fatal().Err(err).Msg("Server forced to shutdown")
 	}
@@ -84,4 +96,35 @@ func setupLogger(cfg *config.Config) {
 	default:
 		zerolog.SetGlobalLevel(zerolog.InfoLevel)
 	}
+}
+
+// initURLEngine inicializa el motor de verificación de URLs
+func initURLEngine(cfg *config.Config) *urlengine.Engine {
+	log.Info().Msg("Initializing URL Engine...")
+
+	engineConfig := &urlengine.EngineConfig{
+		CheckTimeout:     3 * time.Second,
+		URLhausDBPath:    cfg.URLhausDBPath,
+		PhishTankDBPath:  cfg.PhishTankDBPath,
+		GoogleWebRiskKey: cfg.GoogleWebRiskKey,
+		URLScanKey:       cfg.URLScanKey,
+		PhishTankKey:     cfg.PhishTankKey,
+		EnableDBSync:     cfg.EnableDBSync,
+		DatabaseURL:      cfg.DatabaseURL,
+		EnableLocalDB:    cfg.EnableLocalDB,
+	}
+
+	engine := urlengine.NewEngine(engineConfig)
+
+	// Iniciar sincronización de DBs en background
+	ctx := context.Background()
+	engine.Start(ctx)
+
+	log.Info().
+		Bool("db_sync_enabled", cfg.EnableDBSync).
+		Bool("google_webrisk", cfg.GoogleWebRiskKey != "").
+		Bool("urlscan", cfg.URLScanKey != "").
+		Msg("URL Engine initialized and started")
+
+	return engine
 }

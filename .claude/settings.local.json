@@ -5,7 +5,19 @@
       "Bash(mkdir -p:*)",
       "Bash(go mod tidy:*)",
       "Bash(docker --version:*)",
-      "Bash(docker-compose up:*)"
+      "Bash(docker-compose up:*)",
+      "Bash(docker-compose down:*)",
+      "Bash(docker-compose build:*)",
+      "Bash(docker logs:*)",
+      "Bash(curl:*)",
+      "Bash(python3:*)",
+      "Bash(docker exec:*)",
+      "Bash(docker rmi:*)",
+      "Bash(docker system prune:*)",
+      "Bash(rm:*)",
+      "Bash(docker ps:*)",
+      "Bash(__NEW_LINE__ echo \"[1] Health Checks...\")",
+      "Bash(echo \"FAIL\" echo -n \"Fy-Engine: \" curl -s http://localhost:8082/health)"
     ],
     "deny": [],
     "ask": []

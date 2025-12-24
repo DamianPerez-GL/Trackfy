@@ -29,7 +29,7 @@ CONTEXTO:
 
 # Template para cuando hay análisis de amenaza
 ANALYSIS_PROMPT = """
-RESULTADO DEL ANÁLISIS:
+RESULTADO DEL ANÁLISIS (CONFÍA EN ESTE RESULTADO):
 Tipo: {entity_type}
 Contenido: {content}
 Nivel de riesgo: {risk_level}/100
@@ -37,12 +37,23 @@ Veredicto: {verdict}
 Razones:
 {reasons}
 
-Responde al usuario explicando este resultado de forma clara y cercana.
-1. Primero indica si es seguro (✅), sospechoso (⚠️) o peligroso (🚨)
-2. Explica en términos simples POR QUÉ
-3. Dile qué debe hacer (acción concreta)
+IMPORTANTE: El análisis técnico ha verificado el {entity_type}. DEBES basar tu respuesta en el veredicto del análisis:
+- Si el veredicto es "safe" → indica que es SEGURO (✅) porque ha sido verificado
+- Si el veredicto es "suspicious" → indica que es SOSPECHOSO (⚠️)
+- Si el veredicto es "dangerous" → indica que es PELIGROSO (🚨)
 
-Si es peligroso, tranquilízale pero sé claro sobre el riesgo.
+Responde al usuario:
+1. Primero el veredicto usando el emoji correcto según el resultado del análisis
+2. Explica las razones del análisis en términos simples
+3. Si las razones mencionan que "suplanta a X" o "imita a X", indica cuál es el dominio OFICIAL real (ej: "El sitio oficial de BBVA es bbva.es")
+4. Dile qué debe hacer (acción concreta)
+
+Si el veredicto es "safe" y la URL es de un dominio oficial verificado:
+- Confirma que ES seguro y puede confiar en ese enlace
+- NO menciones otros dominios alternativos, el que tiene ya es oficial
+- Ejemplo: "El enlace bbva.com es el sitio oficial de BBVA, puedes confiar en él"
+
+Si es peligroso o sospechoso y hay suplantación, menciona el dominio oficial para que el usuario sepa dónde ir.
 """
 
 # Template para modo rescate

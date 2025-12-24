@@ -6,37 +6,40 @@ WORKDIR /app
 # Instalar dependencias del sistema
 RUN apk add --no-cache git ca-certificates
 
-# Copiar go.mod y descargar dependencias
-COPY go.mod ./
-RUN go mod download && go mod tidy
+# Copiar go.mod y go.sum y descargar dependencias
+COPY go.mod go.sum ./
+RUN go mod download
 
 # Copiar código fuente
 COPY . .
 
-# Compilar
-RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o fy-analysis ./cmd/server
+# Actualizar dependencias y compilar
+RUN go mod tidy && CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o fy-analysis ./cmd/server
 
 # Runtime stage
 FROM alpine:3.19
 
 WORKDIR /app
 
-# Instalar certificados CA para llamadas HTTPS
-RUN apk --no-cache add ca-certificates tzdata
+# Instalar certificados CA para llamadas HTTPS y wget para healthcheck
+RUN apk --no-cache add ca-certificates tzdata wget
+
+# Crear directorio para datos
+RUN mkdir -p /data
 
 # Copiar binario desde builder
 COPY --from=builder /app/fy-analysis .
 
-# Usuario no root
-RUN adduser -D -g '' appuser
+# Usuario no root con acceso a /data
+RUN adduser -D -g '' appuser && chown -R appuser:appuser /data
 USER appuser
 
 # Puerto por defecto
-EXPOSE 8080
+EXPOSE 9090
 
-# Health check
-HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
-    CMD wget --no-verbose --tries=1 --spider http://localhost:8080/health || exit 1
+# Health check usando variable de entorno o default 9090
+HEALTHCHECK --interval=30s --timeout=3s --start-period=10s --retries=3 \
+    CMD wget --no-verbose --tries=1 --spider http://localhost:9090/health || exit 1
 
 # Ejecutar
 CMD ["./fy-analysis"]
