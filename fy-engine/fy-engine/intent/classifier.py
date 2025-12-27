@@ -29,10 +29,12 @@ INTENT_PATTERNS = {
             "es estafa", "parece sospechoso", "no me fío", "será verdad",
         ],
         "patterns": [
-            r"https?://",           # URLs
+            r"https?://",           # URLs con protocolo
             r"bit\.ly|tinyurl",     # URL shorteners
             r"@\w+\.\w+",           # Emails
-            r"\+?34[\s.-]?[67]",    # Teléfonos españoles
+            r"\+?34[\s.-]?[6789]",  # Teléfonos españoles con código país
+            r"\b[6789][\s.-]?\d{2}[\s.-]?\d{2,3}[\s.-]?\d{2,3}\b",  # Teléfonos españoles sin código país
+            r"\b[\w-]+\.(?:es|com|org|net|info|tk|xyz|gob\.es)\b",  # Dominios sin protocolo
         ]
     },
     Intent.RESCUE: {

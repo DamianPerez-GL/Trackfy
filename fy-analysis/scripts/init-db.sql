@@ -484,6 +484,7 @@ ON CONFLICT (name) DO NOTHING;
 
 -- Whitelist de dominios españoles
 INSERT INTO whitelist_domains (domain_hash, domain, category, brand, country, official_name) VALUES
+    -- BANCOS
     (sha256_bytea('bbva.es'), 'bbva.es', 'banking', 'BBVA', 'ES', 'Banco Bilbao Vizcaya Argentaria'),
     (sha256_bytea('bbva.com'), 'bbva.com', 'banking', 'BBVA', 'ES', 'Banco Bilbao Vizcaya Argentaria'),
     (sha256_bytea('santander.es'), 'santander.es', 'banking', 'Santander', 'ES', 'Banco Santander'),
@@ -493,13 +494,65 @@ INSERT INTO whitelist_domains (domain_hash, domain, category, brand, country, of
     (sha256_bytea('ing.es'), 'ing.es', 'banking', 'ING', 'ES', 'ING Direct'),
     (sha256_bytea('bankinter.com'), 'bankinter.com', 'banking', 'Bankinter', 'ES', 'Bankinter'),
     (sha256_bytea('openbank.es'), 'openbank.es', 'banking', 'Openbank', 'ES', 'Openbank'),
+    (sha256_bytea('unicajabanco.es'), 'unicajabanco.es', 'banking', 'Unicaja', 'ES', 'Unicaja Banco'),
+    (sha256_bytea('abanca.com'), 'abanca.com', 'banking', 'Abanca', 'ES', 'Abanca'),
+    (sha256_bytea('kutxabank.es'), 'kutxabank.es', 'banking', 'Kutxabank', 'ES', 'Kutxabank'),
+    (sha256_bytea('sabadell.com'), 'sabadell.com', 'banking', 'Sabadell', 'ES', 'Banco Sabadell'),
+    (sha256_bytea('bancsabadell.com'), 'bancsabadell.com', 'banking', 'Sabadell', 'ES', 'Banco Sabadell'),
+    -- TELECOMUNICACIONES
     (sha256_bytea('movistar.es'), 'movistar.es', 'telecom', 'Movistar', 'ES', 'Movistar'),
     (sha256_bytea('vodafone.es'), 'vodafone.es', 'telecom', 'Vodafone', 'ES', 'Vodafone'),
     (sha256_bytea('orange.es'), 'orange.es', 'telecom', 'Orange', 'ES', 'Orange'),
+    (sha256_bytea('masmovil.es'), 'masmovil.es', 'telecom', 'MasMovil', 'ES', 'MasMovil'),
+    (sha256_bytea('yoigo.com'), 'yoigo.com', 'telecom', 'Yoigo', 'ES', 'Yoigo'),
+    (sha256_bytea('jazztel.com'), 'jazztel.com', 'telecom', 'Jazztel', 'ES', 'Jazztel'),
+    -- ORGANISMOS OFICIALES DEL ESTADO
+    (sha256_bytea('dgt.es'), 'dgt.es', 'government', 'DGT', 'ES', 'Dirección General de Tráfico'),
+    (sha256_bytea('dgt.gob.es'), 'dgt.gob.es', 'government', 'DGT', 'ES', 'Dirección General de Tráfico'),
     (sha256_bytea('correos.es'), 'correos.es', 'government', 'Correos', 'ES', 'Correos'),
     (sha256_bytea('agenciatributaria.es'), 'agenciatributaria.es', 'government', 'AEAT', 'ES', 'Agencia Tributaria'),
-    (sha256_bytea('seg-social.es'), 'seg-social.es', 'government', 'SS', 'ES', 'Seguridad Social'),
-    (sha256_bytea('amazon.es'), 'amazon.es', 'ecommerce', 'Amazon', 'ES', 'Amazon España')
+    (sha256_bytea('agenciatributaria.gob.es'), 'agenciatributaria.gob.es', 'government', 'AEAT', 'ES', 'Agencia Tributaria'),
+    (sha256_bytea('hacienda.gob.es'), 'hacienda.gob.es', 'government', 'Hacienda', 'ES', 'Ministerio de Hacienda'),
+    (sha256_bytea('seg-social.es'), 'seg-social.es', 'government', 'Seguridad Social', 'ES', 'Seguridad Social'),
+    (sha256_bytea('seg-social.gob.es'), 'seg-social.gob.es', 'government', 'Seguridad Social', 'ES', 'Seguridad Social'),
+    (sha256_bytea('sepe.es'), 'sepe.es', 'government', 'SEPE', 'ES', 'Servicio Público de Empleo Estatal'),
+    (sha256_bytea('sepe.gob.es'), 'sepe.gob.es', 'government', 'SEPE', 'ES', 'Servicio Público de Empleo Estatal'),
+    (sha256_bytea('policia.es'), 'policia.es', 'government', 'Policia', 'ES', 'Policía Nacional'),
+    (sha256_bytea('policia.gob.es'), 'policia.gob.es', 'government', 'Policia', 'ES', 'Policía Nacional'),
+    (sha256_bytea('guardiacivil.es'), 'guardiacivil.es', 'government', 'Guardia Civil', 'ES', 'Guardia Civil'),
+    (sha256_bytea('guardiacivil.gob.es'), 'guardiacivil.gob.es', 'government', 'Guardia Civil', 'ES', 'Guardia Civil'),
+    (sha256_bytea('mjusticia.gob.es'), 'mjusticia.gob.es', 'government', 'Justicia', 'ES', 'Ministerio de Justicia'),
+    (sha256_bytea('interior.gob.es'), 'interior.gob.es', 'government', 'Interior', 'ES', 'Ministerio del Interior'),
+    (sha256_bytea('mscbs.gob.es'), 'mscbs.gob.es', 'government', 'Sanidad', 'ES', 'Ministerio de Sanidad'),
+    (sha256_bytea('sanidad.gob.es'), 'sanidad.gob.es', 'government', 'Sanidad', 'ES', 'Ministerio de Sanidad'),
+    (sha256_bytea('educacion.gob.es'), 'educacion.gob.es', 'government', 'Educacion', 'ES', 'Ministerio de Educación'),
+    (sha256_bytea('boe.es'), 'boe.es', 'government', 'BOE', 'ES', 'Boletín Oficial del Estado'),
+    (sha256_bytea('congreso.es'), 'congreso.es', 'government', 'Congreso', 'ES', 'Congreso de los Diputados'),
+    (sha256_bytea('senado.es'), 'senado.es', 'government', 'Senado', 'ES', 'Senado de España'),
+    (sha256_bytea('lamoncloa.gob.es'), 'lamoncloa.gob.es', 'government', 'Moncloa', 'ES', 'Presidencia del Gobierno'),
+    (sha256_bytea('exteriores.gob.es'), 'exteriores.gob.es', 'government', 'Exteriores', 'ES', 'Ministerio de Asuntos Exteriores'),
+    (sha256_bytea('defensa.gob.es'), 'defensa.gob.es', 'government', 'Defensa', 'ES', 'Ministerio de Defensa'),
+    (sha256_bytea('ine.es'), 'ine.es', 'government', 'INE', 'ES', 'Instituto Nacional de Estadística'),
+    (sha256_bytea('cnmv.es'), 'cnmv.es', 'government', 'CNMV', 'ES', 'Comisión Nacional del Mercado de Valores'),
+    (sha256_bytea('bde.es'), 'bde.es', 'government', 'Banco de España', 'ES', 'Banco de España'),
+    -- SERVICIOS PÚBLICOS Y UTILIDADES
+    (sha256_bytea('iberdrola.es'), 'iberdrola.es', 'utilities', 'Iberdrola', 'ES', 'Iberdrola'),
+    (sha256_bytea('endesa.com'), 'endesa.com', 'utilities', 'Endesa', 'ES', 'Endesa'),
+    (sha256_bytea('naturgy.es'), 'naturgy.es', 'utilities', 'Naturgy', 'ES', 'Naturgy'),
+    (sha256_bytea('repsol.es'), 'repsol.es', 'utilities', 'Repsol', 'ES', 'Repsol'),
+    (sha256_bytea('renfe.com'), 'renfe.com', 'transport', 'Renfe', 'ES', 'Renfe'),
+    (sha256_bytea('aena.es'), 'aena.es', 'transport', 'Aena', 'ES', 'Aena Aeropuertos'),
+    -- ECOMMERCE Y SERVICIOS
+    (sha256_bytea('amazon.es'), 'amazon.es', 'ecommerce', 'Amazon', 'ES', 'Amazon España'),
+    (sha256_bytea('elcorteingles.es'), 'elcorteingles.es', 'ecommerce', 'El Corte Ingles', 'ES', 'El Corte Inglés'),
+    (sha256_bytea('mediamarkt.es'), 'mediamarkt.es', 'ecommerce', 'MediaMarkt', 'ES', 'MediaMarkt'),
+    (sha256_bytea('pccomponentes.com'), 'pccomponentes.com', 'ecommerce', 'PcComponentes', 'ES', 'PcComponentes'),
+    (sha256_bytea('wallapop.com'), 'wallapop.com', 'ecommerce', 'Wallapop', 'ES', 'Wallapop'),
+    -- SEGUROS
+    (sha256_bytea('mapfre.es'), 'mapfre.es', 'insurance', 'Mapfre', 'ES', 'Mapfre'),
+    (sha256_bytea('axa.es'), 'axa.es', 'insurance', 'AXA', 'ES', 'AXA Seguros'),
+    (sha256_bytea('mutua.es'), 'mutua.es', 'insurance', 'Mutua', 'ES', 'Mutua Madrileña'),
+    (sha256_bytea('generali.es'), 'generali.es', 'insurance', 'Generali', 'ES', 'Generali Seguros')
 ON CONFLICT (domain_hash) DO NOTHING;
 
 -- Dominios de ejemplo (amenazas)
@@ -514,7 +567,10 @@ INSERT INTO threat_phones (phone_national, country_code, threat_type, severity, 
     ('806123456', '34', 'premium_fraud', 'high', 90, 'manual', 'Línea premium fraudulenta', 3),  -- active + premium
     ('807654321', '34', 'premium_fraud', 'high', 90, 'manual', 'SMS falso premio', 3),
     ('612345678', '34', 'vishing', 'medium', 75, 'user_report', 'Se hacen pasar por BBVA', 1),
-    ('698765432', '34', 'scam', 'medium', 70, 'user_report', 'Estafa romántica', 1)
+    ('698765432', '34', 'scam', 'medium', 70, 'user_report', 'Estafa romántica', 1),
+    ('687120072', '34', 'vishing', 'high', 85, 'user_report', 'Llamadas fraudulentas recurrentes - posible estafa telefónica', 1),
+    ('666555444', '34', 'scam', 'high', 90, 'manual', 'Número usado para estafas de WhatsApp', 1),
+    ('622334455', '34', 'smishing', 'high', 88, 'manual', 'SMS fraudulentos suplantando a Correos', 1)
 ON CONFLICT (phone_national) DO NOTHING;
 
 -- Emails de ejemplo

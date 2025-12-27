@@ -222,6 +222,25 @@ func (c *LocalDBChecker) checkURL(ctx context.Context, indicators *Indicators, s
 		}
 	}
 
+	// 3. Detección heurística: verificar si el dominio intenta suplantar una marca conocida
+	if !result.Found && domain != "" {
+		if brand, official := c.detectBrandImpersonation(ctx, domain); brand != "" {
+			result.Found = true
+			result.ThreatType = "phishing"
+			result.Confidence = 0.75 // Confianza media-alta por heurística
+			result.RawData["severity"] = "high"
+			result.RawData["impersonates"] = brand
+			result.RawData["official_domain"] = official
+			reasons = append(reasons, fmt.Sprintf("Dominio sospechoso que parece suplantar a %s (dominio oficial: %s)", brand, official))
+
+			log.Info().
+				Str("domain", domain).
+				Str("brand", brand).
+				Str("official", official).
+				Msg("[LocalDB] Heuristic: URL brand impersonation detected")
+		}
+	}
+
 	result.RawData["reasons"] = reasons
 	result.Latency = time.Since(startTime)
 
@@ -317,6 +336,25 @@ func (c *LocalDBChecker) checkEmail(ctx context.Context, indicators *Indicators,
 			result.Confidence = float64(domConfidence) / 100.0 * 0.9 // Ligeramente menor confianza
 			result.RawData["severity"] = domSeverity
 			reasons = append(reasons, "Dominio del email en lista negra")
+		}
+	}
+
+	// 3. Detección heurística: verificar si el dominio intenta suplantar una marca conocida
+	if !result.Found && indicators.EmailDomain != "" {
+		if brand, official := c.detectBrandImpersonation(ctx, indicators.EmailDomain); brand != "" {
+			result.Found = true
+			result.ThreatType = "phishing"
+			result.Confidence = 0.75 // Confianza media-alta por heurística
+			result.RawData["severity"] = "high"
+			result.RawData["impersonates"] = brand
+			result.RawData["official_domain"] = official
+			reasons = append(reasons, fmt.Sprintf("Dominio sospechoso que parece suplantar a %s (dominio oficial: %s)", brand, official))
+
+			log.Info().
+				Str("domain", indicators.EmailDomain).
+				Str("brand", brand).
+				Str("official", official).
+				Msg("[LocalDB] Heuristic: Brand impersonation detected")
 		}
 	}
 
@@ -499,4 +537,86 @@ func maskDatabaseURL(url string) string {
 		return url[:30] + "..."
 	}
 	return url
+}
+
+// detectBrandImpersonation detecta si un dominio intenta suplantar una marca conocida
+// Busca patrones como "bbva-algo.es", "santander-login.com", etc.
+// Retorna (brand, official_domain) si detecta suplantación, o ("", "") si no
+func (c *LocalDBChecker) detectBrandImpersonation(ctx context.Context, domain string) (string, string) {
+	domain = strings.ToLower(domain)
+
+	// Obtener todas las marcas de la whitelist
+	rows, err := c.db.QueryContext(ctx, `
+		SELECT LOWER(brand), domain
+		FROM whitelist_domains
+		WHERE brand IS NOT NULL AND brand != ''
+	`)
+	if err != nil {
+		log.Debug().Err(err).Msg("[LocalDB] Error fetching whitelist brands")
+		return "", ""
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var brand, officialDomain string
+		if err := rows.Scan(&brand, &officialDomain); err != nil {
+			continue
+		}
+
+		brandLower := strings.ToLower(brand)
+
+		// Si el dominio ya es el oficial, no es suplantación
+		if domain == officialDomain {
+			return "", ""
+		}
+
+		// Detectar patrones de suplantación:
+		// 1. Dominio contiene la marca pero no es el oficial: bbva-compra.es, mi-santander.com
+		// 2. Marca seguida de guión o punto: bbva-login, santander.verify
+		// 3. Marca al inicio seguida de palabras sospechosas
+
+		// Verificar si el dominio contiene el nombre de la marca
+		if strings.Contains(domain, brandLower) {
+			// Palabras sospechosas comunes en phishing
+			suspiciousWords := []string{
+				"login", "verify", "secure", "update", "confirm", "account",
+				"seguro", "verificar", "actualizar", "confirmar", "cuenta",
+				"compra", "pago", "factura", "incidencia", "soporte", "ayuda",
+				"cliente", "acceso", "password", "clave", "tarjeta", "banco",
+			}
+
+			// Verificar si tiene alguna palabra sospechosa
+			for _, word := range suspiciousWords {
+				if strings.Contains(domain, word) {
+					log.Debug().
+						Str("domain", domain).
+						Str("brand", brand).
+						Str("suspicious_word", word).
+						Msg("[LocalDB] Brand impersonation pattern detected")
+					return brand, officialDomain
+				}
+			}
+
+			// Si contiene la marca con guión o guión bajo, es sospechoso
+			if strings.Contains(domain, brandLower+"-") ||
+				strings.Contains(domain, brandLower+"_") ||
+				strings.Contains(domain, "-"+brandLower) ||
+				strings.Contains(domain, "_"+brandLower) {
+				return brand, officialDomain
+			}
+
+			// Si el dominio empieza con la marca pero tiene más texto, verificar
+			if strings.HasPrefix(domain, brandLower) && domain != officialDomain {
+				// Extraer lo que viene después de la marca
+				suffix := domain[len(brandLower):]
+				// Si hay más texto que no es solo el TLD
+				if len(suffix) > 4 && !strings.HasPrefix(suffix, ".es") &&
+					!strings.HasPrefix(suffix, ".com") {
+					return brand, officialDomain
+				}
+			}
+		}
+	}
+
+	return "", ""
 }

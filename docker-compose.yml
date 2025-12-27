@@ -1,9 +1,48 @@
 # ===========================================
 # Trackfy - Docker Compose
-# Flujo: App -> Fy-Engine -> Fy-Analysis
+# Flujo: App -> API Gateway -> Fy-Engine -> Fy-Analysis
 # ===========================================
 
 services:
+  # -----------------------------------------
+  # API Gateway - Punto de entrada (Go)
+  # Puerto: 8080
+  # -----------------------------------------
+  api-gateway:
+    build:
+      context: ./api-gateway
+      dockerfile: Dockerfile
+    container_name: api-gateway
+    ports:
+      - "8080:8080"
+    environment:
+      - PORT=8080
+      - DATABASE_URL=postgres://trackfy:trackfy_secret@postgres-gateway:5432/trackfy_gateway?sslmode=disable
+      - REDIS_URL=redis:6379
+      - REDIS_PASSWORD=
+      - REDIS_DB=1
+      - JWT_SECRET=${JWT_SECRET:-your-super-secret-jwt-key-change-in-production}
+      - JWT_ACCESS_TTL=15m
+      - JWT_REFRESH_TTL=168h
+      - FY_ENGINE_URL=http://fy-engine:8082
+      - FY_ENGINE_TIMEOUT=30s
+    restart: unless-stopped
+    networks:
+      - trackfy-network
+    depends_on:
+      postgres-gateway:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      fy-engine:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
   # -----------------------------------------
   # Fy-Engine - Orquestador con LLM (Python)
   # Puerto: 8082
@@ -102,6 +141,32 @@ services:
       start_period: 10s
 
   # -----------------------------------------
+  # PostgreSQL Gateway - Base de datos de usuarios
+  # Puerto: 5433
+  # -----------------------------------------
+  postgres-gateway:
+    image: postgres:16-alpine
+    container_name: fy-postgres-gateway
+    ports:
+      - "5433:5432"
+    environment:
+      - POSTGRES_USER=trackfy
+      - POSTGRES_PASSWORD=trackfy_secret
+      - POSTGRES_DB=trackfy_gateway
+    volumes:
+      - postgres-gateway-data:/var/lib/postgresql/data
+      - ./api-gateway/scripts/init-db.sql:/docker-entrypoint-initdb.d/init-db.sql:ro
+    restart: unless-stopped
+    networks:
+      - trackfy-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U trackfy -d trackfy_gateway"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+  # -----------------------------------------
   # Redis - Cache y memoria de conversacion
   # Puerto: 6379
   # -----------------------------------------
@@ -129,6 +194,8 @@ volumes:
     name: fy-analysis-data
   postgres-data:
     name: fy-postgres-data
+  postgres-gateway-data:
+    name: fy-postgres-gateway-data
   redis-data:
     name: fy-redis-data
 

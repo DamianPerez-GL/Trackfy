@@ -17,7 +17,8 @@
       "Bash(rm:*)",
       "Bash(docker ps:*)",
       "Bash(__NEW_LINE__ echo \"[1] Health Checks...\")",
-      "Bash(echo \"FAIL\" echo -n \"Fy-Engine: \" curl -s http://localhost:8082/health)"
+      "Bash(echo \"FAIL\" echo -n \"Fy-Engine: \" curl -s http://localhost:8082/health)",
+      "Bash(pip install:*)"
     ],
     "deny": [],
     "ask": []

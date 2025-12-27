@@ -22,21 +22,23 @@ PATTERNS = {
     EntityType.URL: [
         # URLs completas
         r'https?://[^\s<>"\']+',
-        # URLs sin protocolo pero con dominio conocido
+        # URLs sin protocolo pero con www
         r'(?:www\.)[^\s<>"\']+',
         # URL shorteners
         r'(?:bit\.ly|tinyurl\.com|t\.co|goo\.gl|ow\.ly|is\.gd|buff\.ly)/[^\s<>"\']+',
+        # Dominios sin protocolo (ej: dgt-incidencias.es, bbva-compra.com)
+        r'\b[\w][\w-]*\.(?:es|com|org|net|info|tk|xyz|io|co|eu|me|tv|cc|gob\.es|com\.es|org\.es)\b',
     ],
     EntityType.EMAIL: [
         r'[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}',
     ],
     EntityType.PHONE: [
-        # Español con +34
-        r'\+34[\s.-]?[6789][\s.-]?[0-9]{2}[\s.-]?[0-9]{3}[\s.-]?[0-9]{3}',
-        # Español sin código país
-        r'\b[6789][0-9]{2}[\s.-]?[0-9]{3}[\s.-]?[0-9]{3}\b',
+        # Español con +34 (formatos: +34 612 345 678, +34 612 34 56 78, +34612345678)
+        r'\+34[\s.-]?[6789](?:[\s.-]?[0-9]){8}',
+        # Español sin código país (formatos: 612 345 678, 612 34 56 78, 612345678)
+        r'\b[6789](?:[\s.-]?[0-9]){8}\b',
         # Con paréntesis
-        r'\(\+?34\)[\s.-]?[6789][0-9]{8}',
+        r'\(\+?34\)[\s.-]?[6789](?:[\s.-]?[0-9]){8}',
     ]
 }
 
