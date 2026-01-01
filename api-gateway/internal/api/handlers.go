@@ -23,6 +23,7 @@ type Handler struct {
 	redis      *db.RedisDB
 	jwtManager *auth.JWTManager
 	fyEngine   *services.FyEngineClient
+	fyAnalysis *services.FyAnalysisClient
 }
 
 func NewHandler(postgres *db.PostgresDB, redis *db.RedisDB, jwtManager *auth.JWTManager, fyEngine *services.FyEngineClient) *Handler {
@@ -32,6 +33,11 @@ func NewHandler(postgres *db.PostgresDB, redis *db.RedisDB, jwtManager *auth.JWT
 		jwtManager: jwtManager,
 		fyEngine:   fyEngine,
 	}
+}
+
+// SetFyAnalysisClient configura el cliente de fy-analysis
+func (h *Handler) SetFyAnalysisClient(client *services.FyAnalysisClient) {
+	h.fyAnalysis = client
 }
 
 // ==================== AUTH ====================
@@ -655,4 +661,86 @@ func getClientIP(r *http.Request) string {
 		ip = ip[:idx]
 	}
 	return strings.TrimSpace(ip)
+}
+
+// ==================== REPORTS ====================
+
+type ReportURLRequest struct {
+	URL         string `json:"url"`
+	ThreatType  string `json:"threat_type"`  // phishing, malware, scam, spam, other
+	Description string `json:"description"`  // Descripción opcional del reporte
+}
+
+type ReportURLResponse struct {
+	Success  bool   `json:"success"`
+	Message  string `json:"message"`
+	URLScore int    `json:"url_score"` // Score actual de la URL (anti-spam agregado)
+}
+
+// ReportURL permite a un usuario autenticado reportar una URL sospechosa
+func (h *Handler) ReportURL(w http.ResponseWriter, r *http.Request) {
+	userID, _ := middleware.GetUserID(r.Context())
+
+	if h.fyAnalysis == nil {
+		respondError(w, http.StatusServiceUnavailable, "service_unavailable", "Servicio de reportes no disponible")
+		return
+	}
+
+	var req ReportURLRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		respondError(w, http.StatusBadRequest, "invalid_body", "Invalid request body")
+		return
+	}
+
+	// Validar URL
+	if strings.TrimSpace(req.URL) == "" {
+		respondError(w, http.StatusBadRequest, "missing_url", "URL is required")
+		return
+	}
+
+	// Validar threat_type
+	validTypes := map[string]bool{
+		"phishing": true, "malware": true, "scam": true,
+		"spam": true, "vishing": true, "smishing": true, "other": true,
+	}
+	if req.ThreatType == "" {
+		req.ThreatType = "other"
+	} else if !validTypes[req.ThreatType] {
+		respondError(w, http.StatusBadRequest, "invalid_threat_type",
+			"Invalid threat type. Use: phishing, malware, scam, spam, vishing, smishing, other")
+		return
+	}
+
+	// Obtener info del cliente
+	clientIP := getClientIP(r)
+	userAgent := r.Header.Get("User-Agent")
+
+	// Llamar a fy-analysis
+	analysisReq := &services.ReportURLRequest{
+		URL:         req.URL,
+		UserID:      userID.String(),
+		ThreatType:  req.ThreatType,
+		Description: req.Description,
+		Context:     "chat", // Desde la app
+	}
+
+	result, err := h.fyAnalysis.ReportURL(r.Context(), analysisReq, clientIP, userAgent)
+	if err != nil {
+		log.Error().Err(err).Msg("[ReportURL] Failed to report URL")
+		respondError(w, http.StatusServiceUnavailable, "analysis_error", "Failed to process report")
+		return
+	}
+
+	log.Info().
+		Str("user_id", userID.String()).
+		Str("url", req.URL).
+		Bool("success", result.Success).
+		Int("score", result.URLScore).
+		Msg("[ReportURL] URL reported")
+
+	respondJSON(w, http.StatusOK, ReportURLResponse{
+		Success:  result.Success,
+		Message:  result.Message,
+		URLScore: result.URLScore,
+	})
 }

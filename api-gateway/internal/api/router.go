@@ -75,6 +75,9 @@ func NewRouter(postgres *db.PostgresDB, redis *db.RedisDB, jwtManager *auth.JWTM
 
 		// Chat con Fy
 		r.Post("/chat", h.Chat)
+
+		// Reportes de URLs sospechosas
+		r.Post("/report", h.ReportURL)
 	})
 
 	return r

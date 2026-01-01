@@ -14,25 +14,27 @@ import (
 
 // Engine es el motor principal de verificación de URLs, emails y teléfonos
 type Engine struct {
-	orchestrator *Orchestrator
-	normalizer   *Normalizer
-	aggregator   *Aggregator
-	heuristics   *correlation.HeuristicEngine
-	dbSyncer     *sync.DBSyncer
-	config       *EngineConfig
+	orchestrator       *Orchestrator
+	normalizer         *Normalizer
+	aggregator         *Aggregator
+	heuristics         *correlation.HeuristicEngine
+	dbSyncer           *sync.DBSyncer
+	userReportsChecker *checkers.UserReportsChecker
+	config             *EngineConfig
 }
 
 // EngineConfig configuración del engine
 type EngineConfig struct {
-	CheckTimeout      time.Duration
-	URLhausDBPath     string
-	PhishTankDBPath   string
-	GoogleWebRiskKey  string
-	URLScanKey        string
-	PhishTankKey      string
-	EnableDBSync      bool
-	DatabaseURL       string
-	EnableLocalDB     bool
+	CheckTimeout       time.Duration
+	URLhausDBPath      string
+	PhishTankDBPath    string
+	GoogleWebRiskKey   string
+	URLScanKey         string
+	PhishTankKey       string
+	EnableDBSync       bool
+	DatabaseURL        string
+	EnableLocalDB      bool
+	EnableUserReports  bool // Habilitar checker de reportes de usuarios
 }
 
 // DefaultConfig retorna la configuración por defecto
@@ -47,6 +49,7 @@ func DefaultConfig() *EngineConfig {
 		EnableDBSync:      getEnv("ENABLE_DB_SYNC", "true") == "true",
 		DatabaseURL:       getEnv("DATABASE_URL", ""),
 		EnableLocalDB:     getEnv("ENABLE_LOCAL_DB", "true") == "true",
+		EnableUserReports: getEnv("ENABLE_USER_REPORTS", "true") == "true",
 	}
 }
 
@@ -98,9 +101,12 @@ func NewEngine(config *EngineConfig) *Engine {
 		Bool("has_database_url", config.DatabaseURL != "").
 		Msg("[Engine] Checking LocalDB configuration")
 
+	// Variable para guardar la conexión DB para otros checkers
+	var localDBChecker *checkers.LocalDBChecker
+
 	if config.EnableLocalDB && config.DatabaseURL != "" {
 		log.Info().Msg("[Engine] Initializing LocalDB checker...")
-		localDBChecker := checkers.NewLocalDBChecker(&checkers.LocalDBConfig{
+		localDBChecker = checkers.NewLocalDBChecker(&checkers.LocalDBConfig{
 			DatabaseURL: config.DatabaseURL,
 			MaxConns:    10,
 			Weight:      0.50, // Peso alto para DB local
@@ -116,6 +122,25 @@ func NewEngine(config *EngineConfig) *Engine {
 		log.Info().Msg("[Engine] LocalDB checker disabled or no DATABASE_URL")
 	}
 
+	// UserReports Checker - Reportes de usuarios con anti-spam
+	var userReportsChecker *checkers.UserReportsChecker
+	if config.EnableUserReports && config.DatabaseURL != "" {
+		log.Info().Msg("[Engine] Initializing UserReports checker...")
+		userReportsChecker = checkers.NewUserReportsChecker(
+			localDBChecker.GetDB(),
+			&checkers.UserReportsConfig{
+				Weight:             0.10, // Peso bajo por ser crowdsourced
+				MinScoreForWarning: 40,
+				MinScoreForDanger:  70,
+				MinReportersForUse: 2,
+			},
+		)
+		if userReportsChecker.IsEnabled() {
+			threatCheckers = append(threatCheckers, userReportsChecker)
+			log.Info().Msg("[Engine] UserReports checker initialized")
+		}
+	}
+
 	// Crear orchestrator
 	orchestrator := NewOrchestrator(threatCheckers, config.CheckTimeout)
 
@@ -126,12 +151,13 @@ func NewEngine(config *EngineConfig) *Engine {
 	}
 
 	engine := &Engine{
-		orchestrator: orchestrator,
-		normalizer:   NewNormalizer(),
-		aggregator:   NewAggregator(),
-		heuristics:   correlation.NewHeuristicEngine(),
-		dbSyncer:     dbSyncer,
-		config:       config,
+		orchestrator:       orchestrator,
+		normalizer:         NewNormalizer(),
+		aggregator:         NewAggregator(),
+		heuristics:         correlation.NewHeuristicEngine(),
+		dbSyncer:           dbSyncer,
+		userReportsChecker: userReportsChecker,
+		config:             config,
 	}
 
 	log.Info().
@@ -277,12 +303,13 @@ func (e *Engine) aggregateAnalysisResults(results []*checkers.CheckResult, heuri
 
 	// Pesos por fuente (LocalDB tiene mayor peso)
 	weights := map[string]float64{
-		"localdb":    0.30, // DB local - máxima prioridad
-		"urlhaus":    0.15,
-		"phishtank":  0.15,
-		"webrisk":    0.15,
-		"urlscan":    0.10,
-		"heuristics": 0.15,
+		"localdb":      0.30, // DB local - máxima prioridad
+		"urlhaus":      0.15,
+		"phishtank":    0.15,
+		"webrisk":      0.15,
+		"urlscan":      0.10,
+		"user_reports": 0.10, // Reportes de usuarios - peso bajo (crowdsourced)
+		"heuristics":   0.15,
 	}
 
 	for _, result := range results {
@@ -373,12 +400,13 @@ func (e *Engine) buildSourceResults(results []*checkers.CheckResult) []SourceRes
 	var sources []SourceResult
 
 	weights := map[string]float64{
-		"localdb":    0.30,
-		"urlhaus":    0.15,
-		"phishtank":  0.15,
-		"webrisk":    0.15,
-		"urlscan":    0.10,
-		"heuristics": 0.15,
+		"localdb":      0.30,
+		"urlhaus":      0.15,
+		"phishtank":    0.15,
+		"webrisk":      0.15,
+		"urlscan":      0.10,
+		"user_reports": 0.10,
+		"heuristics":   0.15,
 	}
 
 	for _, result := range results {
@@ -434,6 +462,95 @@ func (e *Engine) ForceDBSync(ctx context.Context, dbName string) error {
 		return e.dbSyncer.ForceSync(ctx, dbName)
 	}
 	return nil
+}
+
+// ReportURLRequest estructura para reportar una URL
+type ReportURLRequest struct {
+	URL           string `json:"url"`
+	UserID        string `json:"user_id"`
+	ThreatType    string `json:"threat_type"`    // phishing, malware, scam, spam, other
+	Description   string `json:"description"`    // Descripción opcional
+	ReportContext string `json:"report_context"` // chat, manual, browser_extension
+	UserIP        string `json:"user_ip"`
+	UserAgent     string `json:"user_agent"`
+}
+
+// ReportURLResponse respuesta al reportar una URL
+type ReportURLResponse struct {
+	Success     bool   `json:"success"`
+	Message     string `json:"message"`
+	URLScore    int    `json:"url_score"`     // Score actual de la URL tras el reporte
+	IsNewReport bool   `json:"is_new_report"` // Si es el primer reporte de esta URL
+}
+
+// ReportURL permite a un usuario reportar una URL como sospechosa
+func (e *Engine) ReportURL(ctx context.Context, req *ReportURLRequest) *ReportURLResponse {
+	log.Info().
+		Str("url", req.URL).
+		Str("user_id", req.UserID).
+		Str("threat_type", req.ThreatType).
+		Msg("[Engine] Report URL request received")
+
+	if e.userReportsChecker == nil || !e.userReportsChecker.IsEnabled() {
+		log.Warn().Msg("[Engine] UserReports checker not enabled")
+		return &ReportURLResponse{
+			Success:  false,
+			Message:  "Servicio de reportes no disponible",
+			URLScore: 0,
+		}
+	}
+
+	// Normalizar y extraer dominio
+	indicators, err := e.normalizer.NormalizeInput(ctx, req.URL, checkers.InputTypeURL)
+	if err != nil {
+		return &ReportURLResponse{
+			Success:  false,
+			Message:  "URL inválida: " + err.Error(),
+			URLScore: 0,
+		}
+	}
+
+	// Llamar al checker para registrar el reporte
+	success, message, score, err := e.userReportsChecker.ReportURL(
+		ctx,
+		indicators.Normalized,
+		indicators.Domain,
+		req.UserID,
+		req.ThreatType,
+		req.Description,
+		req.ReportContext,
+		req.UserIP,
+		req.UserAgent,
+	)
+
+	if err != nil {
+		log.Error().Err(err).Msg("[Engine] Error reporting URL")
+		return &ReportURLResponse{
+			Success:  false,
+			Message:  "Error al procesar reporte",
+			URLScore: 0,
+		}
+	}
+
+	log.Info().
+		Bool("success", success).
+		Int("score", score).
+		Str("url", indicators.Normalized).
+		Msg("[Engine] URL report processed")
+
+	return &ReportURLResponse{
+		Success:  success,
+		Message:  message,
+		URLScore: score,
+	}
+}
+
+// GetUserReportsStats retorna estadísticas del sistema de reportes
+func (e *Engine) GetUserReportsStats(ctx context.Context) (map[string]interface{}, error) {
+	if e.userReportsChecker == nil || !e.userReportsChecker.IsEnabled() {
+		return nil, fmt.Errorf("user reports checker not enabled")
+	}
+	return e.userReportsChecker.GetStats(ctx)
 }
 
 func getEnv(key, defaultValue string) string {

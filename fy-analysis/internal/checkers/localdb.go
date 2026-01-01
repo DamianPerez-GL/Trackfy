@@ -480,6 +480,11 @@ func (c *LocalDBChecker) Close() error {
 	return nil
 }
 
+// GetDB retorna la conexión a la base de datos para reusar en otros checkers
+func (c *LocalDBChecker) GetDB() *sql.DB {
+	return c.db
+}
+
 // GetStats retorna estadísticas de la base de datos (Schema v2.0)
 func (c *LocalDBChecker) GetStats(ctx context.Context) (map[string]interface{}, error) {
 	if !c.enabled || c.db == nil {

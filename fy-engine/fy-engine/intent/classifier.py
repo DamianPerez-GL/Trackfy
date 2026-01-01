@@ -5,6 +5,7 @@ from dataclasses import dataclass
 
 class Intent(Enum):
     ANALYSIS = "analysis"       # Quiere analizar algo (URL, email, phone, mensaje)
+    NEEDS_INFO = "needs_info"   # Menciona algo sospechoso pero NO incluye el dato
     QUESTION = "question"       # Pregunta sobre ciberseguridad
     RESCUE = "rescue"           # Emergencia, ha sido víctima
     SMALLTALK = "smalltalk"     # Saludo, charla casual
@@ -47,6 +48,22 @@ INTENT_PATTERNS = {
         ],
         "patterns": []
     },
+    Intent.NEEDS_INFO: {
+        # Usuario menciona algo sospechoso pero NO incluye URL/email/teléfono
+        "keywords": [
+            "me llegó un mensaje", "me llegó un sms", "me ha llegado",
+            "recibí un mensaje", "recibí un sms", "recibí un email", "recibí un correo",
+            "me llamaron", "me han llamado", "llamada de un número",
+            "número desconocido", "número que no conozco", "número raro",
+            "mensaje sospechoso", "sms sospechoso", "email sospechoso", "correo sospechoso",
+            "mensaje raro", "sms raro", "email raro", "correo raro",
+            "me escribieron", "me contactaron", "me mandaron algo",
+            "no sé quién es", "no sé de quién es", "no reconozco",
+            "dice que soy", "dicen que debo", "dice que tengo",
+            "supuestamente de", "haciéndose pasar", "se hace pasar",
+        ],
+        "patterns": []  # Sin patrones de URL/email/phone, eso lo diferencia de ANALYSIS
+    },
     Intent.QUESTION: {
         "keywords": [
             "qué es", "cómo funciona", "cómo puedo", "qué significa",
@@ -72,20 +89,28 @@ def classify_intent(text: str) -> IntentResult:
     text_lower = text.lower()
     scores = {intent: 0.0 for intent in Intent}
     triggers = {intent: [] for intent in Intent}
-    
+
+    # Detectar si hay entidades analizables (URL, email, teléfono)
+    has_analyzable_entity = False
+    analysis_patterns = INTENT_PATTERNS[Intent.ANALYSIS]["patterns"]
+    for pattern in analysis_patterns:
+        if re.search(pattern, text, re.IGNORECASE):
+            has_analyzable_entity = True
+            break
+
     for intent, patterns in INTENT_PATTERNS.items():
         # Check keywords
         for keyword in patterns["keywords"]:
             if keyword in text_lower:
                 scores[intent] += 1.0
                 triggers[intent].append(keyword)
-        
+
         # Check regex patterns
         for pattern in patterns["patterns"]:
             if re.search(pattern, text, re.IGNORECASE):
                 scores[intent] += 2.0  # Patterns tienen más peso
                 triggers[intent].append(f"pattern:{pattern}")
-    
+
     # Si hay URL/email/phone, casi seguro es análisis
     if scores[Intent.ANALYSIS] >= 2.0:
         return IntentResult(
@@ -93,7 +118,7 @@ def classify_intent(text: str) -> IntentResult:
             confidence=min(scores[Intent.ANALYSIS] / 5.0, 1.0),
             trigger_words=triggers[Intent.ANALYSIS]
         )
-    
+
     # Rescue tiene prioridad si hay match
     if scores[Intent.RESCUE] > 0:
         return IntentResult(
@@ -101,11 +126,21 @@ def classify_intent(text: str) -> IntentResult:
             confidence=min(scores[Intent.RESCUE] / 3.0, 1.0),
             trigger_words=triggers[Intent.RESCUE]
         )
-    
-    # Buscar el intent con mayor score
-    best_intent = max(scores, key=scores.get)
-    best_score = scores[best_intent]
-    
+
+    # NEEDS_INFO: menciona algo sospechoso pero NO incluye URL/email/phone
+    # Solo se activa si hay keywords de NEEDS_INFO pero NO hay entidades analizables
+    if scores[Intent.NEEDS_INFO] > 0 and not has_analyzable_entity:
+        return IntentResult(
+            intent=Intent.NEEDS_INFO,
+            confidence=min(scores[Intent.NEEDS_INFO] / 3.0, 1.0),
+            trigger_words=triggers[Intent.NEEDS_INFO]
+        )
+
+    # Buscar el intent con mayor score (excluyendo NEEDS_INFO si ya lo procesamos)
+    remaining_intents = {k: v for k, v in scores.items() if k != Intent.NEEDS_INFO}
+    best_intent = max(remaining_intents, key=remaining_intents.get)
+    best_score = remaining_intents[best_intent]
+
     # Si no hay match claro, default a question
     if best_score == 0:
         return IntentResult(
@@ -113,7 +148,7 @@ def classify_intent(text: str) -> IntentResult:
             confidence=0.3,
             trigger_words=[]
         )
-    
+
     return IntentResult(
         intent=best_intent,
         confidence=min(best_score / 3.0, 1.0),

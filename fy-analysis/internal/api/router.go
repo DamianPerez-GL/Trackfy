@@ -68,6 +68,7 @@ func NewRouterWithConfig(config *RouterConfig) *chi.Mux {
 		// URL Engine - Verificación avanzada con múltiples fuentes
 		if config != nil && config.URLEngine != nil {
 			urlEngineHandler := handlers.NewURLEngineHandler(config.URLEngine)
+			reportsHandler := handlers.NewReportsHandler(config.URLEngine)
 
 			// Endpoint unificado de análisis (recomendado)
 			r.Post("/analyze", urlEngineHandler.Analyze)
@@ -77,6 +78,12 @@ func NewRouterWithConfig(config *RouterConfig) *chi.Mux {
 				r.Post("/check", urlEngineHandler.CheckURL)
 				r.Get("/status", urlEngineHandler.GetStatus)
 				r.Post("/sync", urlEngineHandler.SyncDB)
+			})
+
+			// Endpoints de reportes de usuarios
+			r.Route("/reports", func(r chi.Router) {
+				r.Post("/", reportsHandler.ReportURL)           // POST /api/v1/reports
+				r.Get("/stats", reportsHandler.GetReportsStats) // GET /api/v1/reports/stats
 			})
 		}
 	})

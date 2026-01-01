@@ -6,6 +6,37 @@ from .prompts import FY_SYSTEM_PROMPT, get_prompt_for_intent, get_mood_from_risk
 client = OpenAI(api_key=OPENAI_API_KEY)
 
 
+def _detect_missing_info_context(message: str) -> str:
+    """
+    Detecta qué tipo de información falta en el mensaje del usuario.
+    Retorna un string describiendo el contexto para el prompt.
+    """
+    message_lower = message.lower()
+    contexts = []
+
+    # Detectar menciones de SMS/mensaje
+    if any(word in message_lower for word in ["sms", "mensaje", "whatsapp", "texto"]):
+        contexts.append("SMS o mensaje de texto (falta el contenido o número del remitente)")
+
+    # Detectar menciones de llamada/teléfono
+    if any(word in message_lower for word in ["llamaron", "llamada", "teléfono", "número", "llamó"]):
+        contexts.append("llamada telefónica (falta el número)")
+
+    # Detectar menciones de email/correo
+    if any(word in message_lower for word in ["email", "correo", "mail", "gmail", "outlook"]):
+        contexts.append("email o correo (falta el remitente o contenido)")
+
+    # Detectar menciones de enlace/link/url
+    if any(word in message_lower for word in ["enlace", "link", "url", "página", "web", "sitio"]):
+        contexts.append("enlace o URL (falta la dirección web)")
+
+    # Si no detectamos nada específico
+    if not contexts:
+        contexts.append("contacto sospechoso (falta el número, email o enlace para verificar)")
+
+    return " / ".join(contexts)
+
+
 async def generate_response(
     user_message: str,
     intent: str,
@@ -67,7 +98,18 @@ async def generate_response(
         )
         full_message = f"{user_message}\n\n{prompt_addition}"
         mood = "thinking"
-        
+
+    elif intent == "needs_info":
+        # Detectar qué tipo de información falta basándose en el mensaje
+        detected_context = _detect_missing_info_context(user_message)
+        prompt_addition = get_prompt_for_intent(
+            intent="needs_info",
+            message=user_message,
+            detected_context=detected_context
+        )
+        full_message = f"{user_message}\n\n{prompt_addition}"
+        mood = "thinking"
+
     else:  # smalltalk
         prompt_addition = get_prompt_for_intent(
             intent="smalltalk",

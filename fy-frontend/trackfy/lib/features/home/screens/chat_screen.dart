@@ -9,6 +9,7 @@ import '../widgets/user_message_bubble.dart';
 import '../widgets/typing_indicator.dart';
 import '../widgets/suggestion_chips.dart';
 import '../widgets/scam_details_modal.dart';
+import '../widgets/report_modal.dart';
 
 /// Modelo de mensaje del chat
 class ChatMessage {
@@ -177,12 +178,12 @@ Envíame cualquier cosa sospechosa: un link, SMS, email o QR. Te digo en segundo
   }
 
   /// Muestra el modal con detalles de la estafa
-  void _showScamDetails(BuildContext context) {
+  void _showScamDetails(BuildContext context, {String? analyzedContent}) {
     ScamDetailsModal.show(
       context,
       scamType: 'Phishing SMS',
       riskLevel: 'MUY ALTO',
-      analyzedContent: 'bit.ly/correos-pago → dominio falso detectado',
+      analyzedContent: analyzedContent ?? 'bit.ly/correos-pago → dominio falso detectado',
       indicators: [
         'Correos nunca cobra tasas adicionales por SMS',
         'El enlace usa acortador (bit.ly) para ocultar la URL real',
@@ -199,9 +200,40 @@ Envíame cualquier cosa sospechosa: un link, SMS, email o QR. Te digo en segundo
       ],
       onReport: () {
         Navigator.of(context).pop();
-        debugPrint('Reportar estafa');
+        _showReportModal(context, initialContent: analyzedContent);
       },
     );
+  }
+
+  /// Muestra el modal para reportar contenido sospechoso
+  Future<void> _showReportModal(BuildContext context, {String? initialContent}) async {
+    final result = await ReportModal.show(
+      context,
+      initialContent: initialContent,
+      onReportSuccess: () {
+        // Añadir mensaje de agradecimiento de Fy
+        _addThankYouMessage();
+      },
+    );
+
+    // Si el reporte fue exitoso y no se añadió ya el mensaje
+    if (result == true) {
+      _scrollToBottom();
+    }
+  }
+
+  /// Añade mensaje de agradecimiento de Fy tras un reporte exitoso
+  void _addThankYouMessage() {
+    setState(() {
+      _messages.add(ChatMessage(
+        id: 'thanks_${DateTime.now().millisecondsSinceEpoch}',
+        content: '¡Gracias por reportar! 🛡️\n\nTu ayuda es muy valiosa. Cada reporte nos permite proteger mejor a toda la comunidad.\n\nJuntos hacemos internet más seguro.',
+        isFromUser: false,
+        timestamp: DateTime.now(),
+        fyType: FyMessageType.safe,
+      ));
+    });
+    _scrollToBottom();
   }
 
   /// Calcula el mood de Fy basado en los mensajes
@@ -282,7 +314,7 @@ Envíame cualquier cosa sospechosa: un link, SMS, email o QR. Te digo en segundo
                           ? () => _showScamDetails(context)
                           : null,
                       onReport: message.fyType == FyMessageType.danger
-                          ? () => debugPrint('Reportar')
+                          ? () => _showReportModal(context)
                           : null,
                       onRescue: message.fyType == FyMessageType.danger
                           ? () => debugPrint('Activar rescate')
