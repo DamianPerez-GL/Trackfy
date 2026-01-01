@@ -2,6 +2,13 @@
 # Trackfy - Docker Compose
 # Flujo: App -> API Gateway -> Fy-Engine -> Fy-Analysis
 # ===========================================
+#
+# EJEMPLOS DE USO:
+#   docker compose up                     # Todo el sistema completo
+#   docker compose up postgres fy-dbsync  # Solo BD + sincronizador (para desarrollo)
+#   docker compose up -d postgres fy-dbsync  # En background
+#
+# ===========================================
 
 services:
   # -----------------------------------------
@@ -92,10 +99,10 @@ services:
       - GOOGLE_WEBRISK_KEY=${GOOGLE_WEBRISK_KEY:-}
       - URLSCAN_KEY=${URLSCAN_KEY:-}
       - PHISHTANK_KEY=${PHISHTANK_KEY:-}
-      # URL Engine - DB Paths
+      # URL Engine - DB Paths (compartido con fy-dbsync)
       - URLHAUS_DB_PATH=/data/urlhaus.csv
       - PHISHTANK_DB_PATH=/data/phishtank.json
-      - ENABLE_DB_SYNC=true
+      - ENABLE_DB_SYNC=false  # Deshabilitado porque fy-dbsync lo maneja
       # PostgreSQL Local DB
       - DATABASE_URL=postgres://trackfy:trackfy_secret@postgres:5432/fy_threats?sslmode=disable
       - ENABLE_LOCAL_DB=true
@@ -107,12 +114,49 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+      fy-dbsync:
+        condition: service_healthy
     healthcheck:
       test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:9090/health"]
       interval: 30s
       timeout: 10s
       retries: 3
       start_period: 10s
+
+  # -----------------------------------------
+  # Fy-DBSync - Sincronizador de DBs (Go)
+  # Puerto: 9091 (solo health check)
+  # -----------------------------------------
+  fy-dbsync:
+    build:
+      context: ./fy-dbsync
+      dockerfile: Dockerfile
+    container_name: fy-dbsync
+    ports:
+      - "9091:9091"
+    environment:
+      - PORT=9091
+      - ENVIRONMENT=development
+      - LOG_LEVEL=info
+      - URLHAUS_DB_PATH=/data/urlhaus.csv
+      - PHISHTANK_DB_PATH=/data/phishtank.json
+      - PHISHTANK_KEY=${PHISHTANK_KEY:-}
+      - URLHAUS_INTERVAL=5m
+      - PHISHTANK_INTERVAL=1h
+    volumes:
+      - urlengine-data:/data
+    restart: unless-stopped
+    networks:
+      - trackfy-network
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:9091/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s
 
   # -----------------------------------------
   # PostgreSQL - Base de datos de amenazas
