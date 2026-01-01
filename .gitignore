@@ -54,3 +54,6 @@ data/
 *.key
 credentials.json
 service-account.json
+
+fy-frontend/trackfy.zip
+*.zip
