@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"net/http"
 	"os"
 	"os/signal"
@@ -12,7 +13,6 @@ import (
 	"github.com/rs/zerolog/log"
 
 	"github.com/trackfy/fy-dbsync/internal/config"
-	"github.com/trackfy/fy-dbsync/internal/downloader"
 	"github.com/trackfy/fy-dbsync/internal/syncer"
 )
 
@@ -27,12 +27,19 @@ func main() {
 		Str("environment", cfg.Environment).
 		Msg("Starting Fy-DBSync Service")
 
-	// Inicializar downloaders
-	urlhausDownloader := downloader.NewURLhausDownloader(cfg.URLhausDBPath)
-	phishtankDownloader := downloader.NewPhishTankDownloader(cfg.PhishTankDBPath, cfg.PhishTankKey)
+	// Verificar DATABASE_URL
+	if cfg.DatabaseURL == "" {
+		log.Fatal().Msg("DATABASE_URL is required")
+	}
 
 	// Crear syncer
-	dbSyncer := syncer.NewDBSyncer(urlhausDownloader, phishtankDownloader)
+	dbSyncer, err := syncer.NewDBSyncer(&syncer.SyncerConfig{
+		DatabaseURL:  cfg.DatabaseURL,
+		PhishTankKey: cfg.PhishTankKey,
+	})
+	if err != nil {
+		log.Fatal().Err(err).Msg("Failed to create syncer")
+	}
 
 	// Contexto con cancelación
 	ctx, cancel := context.WithCancel(context.Background())
@@ -41,33 +48,37 @@ func main() {
 	// Iniciar sincronización
 	dbSyncer.Start(ctx)
 
-	// Servidor HTTP mínimo para health checks
+	// Servidor HTTP para health checks y status
 	mux := http.NewServeMux()
+
 	mux.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
 		w.Write([]byte(`{"status":"healthy","service":"fy-dbsync"}`))
 	})
+
 	mux.HandleFunc("/status", func(w http.ResponseWriter, r *http.Request) {
 		status := dbSyncer.GetStatus()
 		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusOK)
-		// Simple status response
-		w.Write([]byte(`{"urlhaus":` + formatStats(status["urlhaus"]) + `,"phishtank":` + formatStats(status["phishtank"]) + `}`))
+		json.NewEncoder(w).Encode(status)
 	})
+
 	mux.HandleFunc("/sync", func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodPost {
 			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 			return
 		}
-		db := r.URL.Query().Get("db")
-		if db == "" {
-			db = "all"
+		source := r.URL.Query().Get("source")
+		if source == "" {
+			source = "all"
 		}
-		go dbSyncer.ForceSync(ctx, db)
+		go dbSyncer.ForceSync(ctx, source)
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusAccepted)
-		w.Write([]byte(`{"message":"Sync started","db":"` + db + `"}`))
+		json.NewEncoder(w).Encode(map[string]string{
+			"message": "Sync started",
+			"source":  source,
+		})
 	})
 
 	server := &http.Server{
@@ -79,9 +90,9 @@ func main() {
 
 	// Iniciar servidor
 	go func() {
-		log.Info().Str("port", cfg.Port).Msg("Health server listening")
+		log.Info().Str("port", cfg.Port).Msg("HTTP server listening")
 		if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-			log.Error().Err(err).Msg("Health server failed")
+			log.Error().Err(err).Msg("HTTP server failed")
 		}
 	}()
 
@@ -120,29 +131,4 @@ func setupLogger(cfg *config.Config) {
 	default:
 		zerolog.SetGlobalLevel(zerolog.InfoLevel)
 	}
-}
-
-func formatStats(stats interface{}) string {
-	if stats == nil {
-		return `{"status":"not_initialized"}`
-	}
-	m, ok := stats.(map[string]interface{})
-	if !ok {
-		return `{"status":"unknown"}`
-	}
-	urls, _ := m["urls"].(int)
-	lastSync, _ := m["last_sync"].(string)
-	return `{"urls":` + intToStr(urls) + `,"last_sync":"` + lastSync + `"}`
-}
-
-func intToStr(i int) string {
-	if i == 0 {
-		return "0"
-	}
-	s := ""
-	for i > 0 {
-		s = string(rune('0'+i%10)) + s
-		i /= 10
-	}
-	return s
 }

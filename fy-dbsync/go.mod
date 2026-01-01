@@ -3,6 +3,7 @@ module github.com/trackfy/fy-dbsync
 go 1.21
 
 require (
+	github.com/lib/pq v1.10.9
 	github.com/rs/zerolog v1.31.0
 )
 

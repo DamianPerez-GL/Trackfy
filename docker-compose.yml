@@ -95,19 +95,12 @@ services:
       - ENVIRONMENT=development
       - LOG_LEVEL=debug
       - RATE_LIMIT=100
-      # URL Engine - API Keys (opcional)
+      # API Keys externas (opcional)
       - GOOGLE_WEBRISK_KEY=${GOOGLE_WEBRISK_KEY:-}
       - URLSCAN_KEY=${URLSCAN_KEY:-}
-      - PHISHTANK_KEY=${PHISHTANK_KEY:-}
-      # URL Engine - DB Paths (compartido con fy-dbsync)
-      - URLHAUS_DB_PATH=/data/urlhaus.csv
-      - PHISHTANK_DB_PATH=/data/phishtank.json
-      - ENABLE_DB_SYNC=false  # Deshabilitado porque fy-dbsync lo maneja
-      # PostgreSQL Local DB
+      # PostgreSQL - Base de datos de amenazas (alimentada por fy-dbsync)
       - DATABASE_URL=postgres://trackfy:trackfy_secret@postgres:5432/fy_threats?sslmode=disable
       - ENABLE_LOCAL_DB=true
-    volumes:
-      - urlengine-data:/data
     restart: unless-stopped
     networks:
       - trackfy-network
@@ -124,8 +117,9 @@ services:
       start_period: 10s
 
   # -----------------------------------------
-  # Fy-DBSync - Sincronizador de DBs (Go)
-  # Puerto: 9091 (solo health check)
+  # Fy-DBSync - Sincronizador de amenazas (Go)
+  # Descarga URLhaus + PhishTank directo a PostgreSQL
+  # Puerto: 9091 (health/status)
   # -----------------------------------------
   fy-dbsync:
     build:
@@ -138,13 +132,10 @@ services:
       - PORT=9091
       - ENVIRONMENT=development
       - LOG_LEVEL=info
-      - URLHAUS_DB_PATH=/data/urlhaus.csv
-      - PHISHTANK_DB_PATH=/data/phishtank.json
+      - DATABASE_URL=postgres://trackfy:trackfy_secret@postgres:5432/fy_threats?sslmode=disable
       - PHISHTANK_KEY=${PHISHTANK_KEY:-}
       - URLHAUS_INTERVAL=5m
       - PHISHTANK_INTERVAL=1h
-    volumes:
-      - urlengine-data:/data
     restart: unless-stopped
     networks:
       - trackfy-network
@@ -156,7 +147,7 @@ services:
       interval: 30s
       timeout: 10s
       retries: 3
-      start_period: 15s
+      start_period: 30s
 
   # -----------------------------------------
   # PostgreSQL - Base de datos de amenazas
@@ -234,8 +225,6 @@ services:
 # Volumes
 # -----------------------------------------
 volumes:
-  urlengine-data:
-    name: fy-analysis-data
   postgres-data:
     name: fy-postgres-data
   postgres-gateway-data:
