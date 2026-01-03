@@ -80,6 +80,7 @@ func main() {
 			"urlhaus":   {Source: "urlhaus"},
 			"openphish": {Source: "openphish"},
 			"emails":    {Source: "emails"},
+			"phones":    {Source: "phones"},
 		},
 	}
 
@@ -392,13 +393,16 @@ func (s *Server) handleForceSync(w http.ResponseWriter, r *http.Request) {
 			s.syncOpenPhish(ctx)
 		case "emails", "stopforumspam":
 			s.syncStopForumSpam(ctx)
+		case "phones":
+			s.syncPhones(ctx)
 		case "all":
 			// Sincronizar todas las fuentes en paralelo
 			var wg sync.WaitGroup
-			wg.Add(3)
+			wg.Add(4)
 			go func() { defer wg.Done(); s.syncURLhaus(ctx) }()
 			go func() { defer wg.Done(); s.syncOpenPhish(ctx) }()
 			go func() { defer wg.Done(); s.syncStopForumSpam(ctx) }()
+			go func() { defer wg.Done(); s.syncPhones(ctx) }()
 			wg.Wait()
 		}
 	}()
@@ -943,6 +947,7 @@ const (
 	urlhausDownloadURL      = "https://urlhaus.abuse.ch/downloads/text/"
 	openPhishURL            = "https://openphish.com/feed.txt"
 	stopForumSpamEmailsURL  = "https://www.stopforumspam.com/downloads/listed_email_365_all.gz"
+	listaHuPhonesURL        = "https://listahu.org/descargar/csv"
 )
 
 // syncURLhaus descarga e importa datos de URLhaus
@@ -1307,6 +1312,181 @@ func (s *Server) syncStopForumSpam(ctx context.Context) {
 			last_sync = NOW(),
 			last_count = $1
 	`, records)
+}
+
+// syncPhones descarga e importa números de teléfono de estafa desde Lista Hũ
+func (s *Server) syncPhones(ctx context.Context) {
+	source := "phones"
+	s.updateSyncStatus(source, true, "Downloading Lista Hũ phone database...")
+
+	startTime := time.Now()
+	var records, errors int64
+
+	defer func() {
+		duration := time.Since(startTime)
+		s.updateSyncStatusComplete(source, records, errors, fmt.Sprintf("Completed in %v", duration.Round(time.Second)))
+	}()
+
+	req, err := http.NewRequestWithContext(ctx, "GET", listaHuPhonesURL, nil)
+	if err != nil {
+		s.updateSyncStatusComplete(source, 0, 1, "Failed to create request: "+err.Error())
+		return
+	}
+	req.Header.Set("User-Agent", "Fy-Admin/1.0")
+
+	client := &http.Client{Timeout: 120 * time.Second}
+	resp, err := client.Do(req)
+	if err != nil {
+		s.updateSyncStatusComplete(source, 0, 1, "Failed to download: "+err.Error())
+		return
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		s.updateSyncStatusComplete(source, 0, 1, fmt.Sprintf("Download failed with status: %d", resp.StatusCode))
+		return
+	}
+
+	s.updateSyncStatus(source, true, "Parsing and importing phones...")
+
+	scanner := bufio.NewScanner(resp.Body)
+	buf := make([]byte, 0, 64*1024)
+	scanner.Buffer(buf, 1024*1024)
+
+	lineNum := 0
+	now := time.Now()
+
+	// Saltar cabecera
+	if scanner.Scan() {
+		// Primera línea es header: "#","Numero","Tipo","Comentarios","Captura","Fecha_Denuncia"
+	}
+
+	for scanner.Scan() {
+		select {
+		case <-ctx.Done():
+			return
+		default:
+		}
+
+		line := strings.TrimSpace(scanner.Text())
+		if line == "" {
+			continue
+		}
+
+		lineNum++
+
+		// Formato CSV: "#","Numero","Tipo","Comentarios","Captura","Fecha_Denuncia"
+		// Parsear CSV manualmente (campos entre comillas)
+		parts := parseCSVLine(line)
+		if len(parts) < 3 {
+			errors++
+			continue
+		}
+
+		phone := strings.TrimSpace(parts[1])
+		tipoRaw := strings.ToLower(strings.TrimSpace(parts[2]))
+
+		// Validar número
+		if phone == "" || len(phone) < 6 {
+			errors++
+			continue
+		}
+
+		// Determinar código de país y número nacional
+		countryCode := "XX"
+		phoneNational := phone
+
+		// Detectar prefijos conocidos
+		if strings.HasPrefix(phone, "34") && len(phone) >= 11 {
+			countryCode = "ES"
+			phoneNational = phone[2:] // Remover 34
+		} else if strings.HasPrefix(phone, "595") && len(phone) >= 12 {
+			countryCode = "PY" // Paraguay
+			phoneNational = phone[3:]
+		} else if strings.HasPrefix(phone, "54") && len(phone) >= 11 {
+			countryCode = "AR" // Argentina
+			phoneNational = phone[2:]
+		} else if strings.HasPrefix(phone, "52") && len(phone) >= 11 {
+			countryCode = "MX" // México
+			phoneNational = phone[2:]
+		} else if strings.HasPrefix(phone, "57") && len(phone) >= 11 {
+			countryCode = "CO" // Colombia
+			phoneNational = phone[2:]
+		} else if strings.HasPrefix(phone, "56") && len(phone) >= 11 {
+			countryCode = "CL" // Chile
+			phoneNational = phone[2:]
+		} else if strings.HasPrefix(phone, "51") && len(phone) >= 11 {
+			countryCode = "PE" // Perú
+			phoneNational = phone[2:]
+		}
+
+		// Mapear tipo de amenaza
+		threatType := "scam"
+		severity := "medium"
+		switch {
+		case strings.Contains(tipoRaw, "estafa"):
+			threatType = "scam"
+			severity = "high"
+		case strings.Contains(tipoRaw, "extorsion") || strings.Contains(tipoRaw, "extorsión"):
+			threatType = "scam"
+			severity = "critical"
+		case strings.Contains(tipoRaw, "spam"):
+			threatType = "spam"
+			severity = "low"
+		case strings.Contains(tipoRaw, "phishing"):
+			threatType = "phishing"
+			severity = "high"
+		}
+
+		// Obtener descripción si existe
+		description := ""
+		if len(parts) >= 4 {
+			description = strings.TrimSpace(parts[3])
+		}
+
+		_, err := s.db.ExecContext(ctx, `
+			INSERT INTO threat_phones (phone_national, country_code, threat_type, severity, confidence, source, description, first_seen, last_seen, flags)
+			VALUES ($1, $2, $3::threat_type_enum, $4::severity_enum, 75, 'osint'::source_enum, $5, $6, $7, 1)
+			ON CONFLICT (phone_national) DO UPDATE SET
+				last_seen = EXCLUDED.last_seen,
+				report_count = threat_phones.report_count + 1,
+				confidence = GREATEST(threat_phones.confidence, EXCLUDED.confidence)
+		`, phoneNational, countryCode, threatType, severity, description, now, now)
+
+		if err != nil {
+			errors++
+			continue
+		}
+		records++
+
+		if lineNum%1000 == 0 {
+			s.updateSyncStatus(source, true, fmt.Sprintf("Imported %d phones...", records))
+		}
+	}
+
+	// No hay sync_status específico para phones, pero podemos usar 'manual' o no actualizar
+	fmt.Printf("[Phones] Import completed: %d records, %d errors\n", records, errors)
+}
+
+// parseCSVLine parsea una línea CSV con campos entre comillas
+func parseCSVLine(line string) []string {
+	var result []string
+	var current strings.Builder
+	inQuotes := false
+
+	for i := 0; i < len(line); i++ {
+		c := line[i]
+		if c == '"' {
+			inQuotes = !inQuotes
+		} else if c == ',' && !inQuotes {
+			result = append(result, current.String())
+			current.Reset()
+		} else {
+			current.WriteByte(c)
+		}
+	}
+	result = append(result, current.String())
+	return result
 }
 
 // updateSyncStatus actualiza el estado de sincronización

@@ -1058,12 +1058,13 @@
             document.getElementById('globalStatus').style.background = allOnline ? 'var(--success)' : 'var(--warning)';
             document.getElementById('globalStatusText').textContent = allOnline ? 'Online' : 'Parcial';
 
-            // Sync sources - mostrar siempre las 3 fuentes principales
+            // Sync sources - mostrar todas las fuentes principales
             const syncDiv = document.getElementById('syncSources');
             const allSources = [
                 { key: 'urlhaus', icon: 'U', name: 'URLhaus', desc: 'Malware URLs', syncKey: 'urlhaus' },
                 { key: 'openphish', icon: 'O', name: 'OpenPhish', desc: 'Phishing URLs', syncKey: 'openphish' },
-                { key: 'osint', icon: 'S', name: 'StopForumSpam', desc: 'Spam Emails', syncKey: 'stopforumspam' }
+                { key: 'osint', icon: 'S', name: 'StopForumSpam', desc: 'Spam Emails', syncKey: 'emails' },
+                { key: 'phones', icon: 'T', name: 'Lista Hu', desc: 'Scam Phones', syncKey: 'phones' }
             ];
 
             // Crear mapa de datos de sync_status
@@ -1096,7 +1097,8 @@
             const defaultIntervals = {
                 'urlhaus': 300,      // 5 min
                 'openphish': 3600,   // 1 hora
-                'osint': 86400       // 24 horas
+                'osint': 86400,      // 24 horas
+                'phones': 86400      // 24 horas
             };
 
             syncDiv.innerHTML = allSources.map(src => {
@@ -1386,7 +1388,9 @@
                 const sourceName = {
                     'urlhaus': 'URLhaus',
                     'openphish': 'OpenPhish',
+                    'emails': 'StopForumSpam',
                     'stopforumspam': 'StopForumSpam',
+                    'phones': 'Lista Hu (Phones)',
                     'all': 'Todas las fuentes'
                 }[source] || source;
                 showToast(data.success ? `Sync iniciado: ${sourceName}` : 'Error: ' + data.error, data.success ? 'success' : 'error');
