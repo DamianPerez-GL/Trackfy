@@ -1,0 +1,1495 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FY // THREAT INTELLIGENCE CONSOLE</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=JetBrains+Mono:wght@400;500;700&display=swap');
+
+        :root {
+            --bg-primary: #0a0a0f;
+            --bg-secondary: #0d1117;
+            --bg-card: #161b22;
+            --bg-card-hover: #1c2128;
+            --accent: #00ff41;
+            --accent-glow: rgba(0, 255, 65, 0.4);
+            --accent-dim: #00cc33;
+            --accent-secondary: #39ff14;
+            --text-primary: #c9d1d9;
+            --text-secondary: #8b949e;
+            --text-bright: #f0f6fc;
+            --success: #00ff41;
+            --warning: #ffb800;
+            --danger: #ff3333;
+            --border: #30363d;
+            --border-glow: rgba(0, 255, 65, 0.2);
+            --scanline: rgba(0, 255, 65, 0.03);
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: 'JetBrains Mono', 'Consolas', monospace;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            min-height: 100vh;
+            position: relative;
+            overflow-x: hidden;
+        }
+
+        /* Scanline effect */
+        body::before {
+            content: '';
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: repeating-linear-gradient(
+                0deg,
+                transparent,
+                transparent 2px,
+                var(--scanline) 2px,
+                var(--scanline) 4px
+            );
+            pointer-events: none;
+            z-index: 9999;
+        }
+
+        /* Grid background */
+        body::after {
+            content: '';
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-image:
+                linear-gradient(rgba(0, 255, 65, 0.03) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(0, 255, 65, 0.03) 1px, transparent 1px);
+            background-size: 50px 50px;
+            pointer-events: none;
+            z-index: -1;
+        }
+
+        .container { max-width: 1400px; margin: 0 auto; padding: 20px; }
+
+        header {
+            background: linear-gradient(180deg, var(--bg-secondary) 0%, var(--bg-primary) 100%);
+            border-bottom: 1px solid var(--border);
+            padding: 12px 0;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            box-shadow: 0 0 30px rgba(0, 255, 65, 0.1);
+        }
+        header::after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            height: 1px;
+            background: linear-gradient(90deg, transparent, var(--accent), transparent);
+            animation: headerGlow 3s ease-in-out infinite;
+        }
+        @keyframes headerGlow {
+            0%, 100% { opacity: 0.5; }
+            50% { opacity: 1; }
+        }
+
+        header .container { display: flex; align-items: center; justify-content: space-between; }
+
+        .logo { display: flex; align-items: center; gap: 12px; }
+        .logo-icon {
+            width: 42px; height: 42px;
+            background: linear-gradient(135deg, var(--accent) 0%, var(--accent-dim) 100%);
+            border-radius: 8px;
+            display: flex; align-items: center; justify-content: center;
+            font-family: 'Orbitron', sans-serif;
+            font-weight: 900; font-size: 16px;
+            color: var(--bg-primary);
+            box-shadow: 0 0 20px var(--accent-glow), inset 0 0 20px rgba(255,255,255,0.1);
+            animation: iconPulse 2s ease-in-out infinite;
+            position: relative;
+        }
+        .logo-icon::before {
+            content: '';
+            position: absolute;
+            inset: -2px;
+            border-radius: 10px;
+            background: linear-gradient(135deg, var(--accent), transparent, var(--accent));
+            z-index: -1;
+            animation: borderRotate 4s linear infinite;
+        }
+        @keyframes iconPulse {
+            0%, 100% { box-shadow: 0 0 20px var(--accent-glow); }
+            50% { box-shadow: 0 0 30px var(--accent-glow), 0 0 50px rgba(0, 255, 65, 0.2); }
+        }
+        @keyframes borderRotate {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .logo h1 {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 1.5rem;
+            font-weight: 700;
+            letter-spacing: 2px;
+        }
+        .logo span {
+            color: var(--accent);
+            text-shadow: 0 0 10px var(--accent-glow);
+        }
+
+        .header-actions { display: flex; align-items: center; gap: 12px; }
+
+        .status-indicator {
+            display: flex; align-items: center; gap: 8px;
+            padding: 8px 14px;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 20px;
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        .status-dot {
+            width: 8px; height: 8px; border-radius: 50%;
+            background: var(--success);
+            box-shadow: 0 0 10px var(--success);
+            animation: statusPulse 1.5s infinite;
+        }
+        @keyframes statusPulse {
+            0%, 100% { opacity: 1; box-shadow: 0 0 10px var(--success); }
+            50% { opacity: 0.6; box-shadow: 0 0 20px var(--success); }
+        }
+        @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
+
+        /* Tabs */
+        .tabs {
+            display: flex; gap: 4px;
+            background: var(--bg-secondary);
+            padding: 4px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            border: 1px solid var(--border);
+        }
+        .tab {
+            padding: 12px 24px;
+            border: none;
+            background: transparent;
+            color: var(--text-secondary);
+            cursor: pointer;
+            border-radius: 6px;
+            font-size: 0.8rem;
+            font-family: 'Orbitron', sans-serif;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            transition: all 0.3s;
+        }
+        .tab:hover {
+            color: var(--accent);
+            background: rgba(0, 255, 65, 0.05);
+        }
+        .tab.active {
+            background: var(--accent);
+            color: var(--bg-primary);
+            font-weight: 700;
+            box-shadow: 0 0 20px var(--accent-glow);
+        }
+        .tab-content { display: none; }
+        .tab-content.active { display: block; animation: fadeIn 0.3s ease; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
+        /* Cards */
+        .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; margin-bottom: 20px; }
+        .card {
+            background: var(--bg-card);
+            border-radius: 8px;
+            padding: 20px;
+            border: 1px solid var(--border);
+            position: relative;
+            overflow: hidden;
+            transition: all 0.3s;
+        }
+        .card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 2px;
+            background: linear-gradient(90deg, transparent, var(--accent), transparent);
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+        .card:hover {
+            border-color: var(--border-glow);
+            box-shadow: 0 0 30px rgba(0, 255, 65, 0.1);
+            transform: translateY(-2px);
+        }
+        .card:hover::before { opacity: 1; }
+
+        .card-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+        .card-title {
+            font-size: 0.7rem;
+            color: var(--accent);
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            font-family: 'Orbitron', sans-serif;
+        }
+        .stat-value {
+            font-size: 2.5rem;
+            font-weight: 700;
+            color: var(--text-bright);
+            font-family: 'Orbitron', sans-serif;
+            text-shadow: 0 0 20px var(--accent-glow);
+        }
+        .stat-label {
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        /* Buttons */
+        .btn {
+            padding: 10px 18px;
+            border-radius: 4px;
+            border: 1px solid var(--border);
+            cursor: pointer;
+            font-size: 0.75rem;
+            font-weight: 500;
+            font-family: 'JetBrains Mono', monospace;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            transition: all 0.3s;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            position: relative;
+            overflow: hidden;
+        }
+        .btn::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.1), transparent);
+            transition: left 0.5s;
+        }
+        .btn:hover::before { left: 100%; }
+
+        .btn-primary {
+            background: var(--accent);
+            color: var(--bg-primary);
+            border-color: var(--accent);
+            box-shadow: 0 0 15px var(--accent-glow);
+        }
+        .btn-primary:hover {
+            background: var(--accent-secondary);
+            box-shadow: 0 0 25px var(--accent-glow);
+        }
+        .btn-secondary {
+            background: transparent;
+            color: var(--accent);
+            border: 1px solid var(--accent);
+        }
+        .btn-secondary:hover {
+            background: rgba(0, 255, 65, 0.1);
+            box-shadow: 0 0 15px var(--accent-glow);
+        }
+        .btn-sm { padding: 6px 12px; font-size: 0.7rem; }
+        .btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+        /* Tables */
+        .table-container {
+            background: var(--bg-card);
+            border-radius: 8px;
+            border: 1px solid var(--border);
+            overflow: hidden;
+        }
+        .table-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 16px 20px;
+            border-bottom: 1px solid var(--border);
+            background: var(--bg-secondary);
+        }
+        .table-title {
+            font-weight: 700;
+            font-family: 'Orbitron', sans-serif;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: var(--accent);
+        }
+        .table-actions { display: flex; gap: 10px; align-items: center; }
+        .search-input {
+            background: var(--bg-primary);
+            border: 1px solid var(--border);
+            padding: 8px 14px;
+            border-radius: 4px;
+            color: var(--text-primary);
+            font-size: 0.8rem;
+            font-family: 'JetBrains Mono', monospace;
+            width: 200px;
+            transition: all 0.3s;
+        }
+        .search-input:focus {
+            outline: none;
+            border-color: var(--accent);
+            box-shadow: 0 0 10px var(--accent-glow);
+        }
+        .search-input::placeholder { color: var(--text-secondary); }
+
+        table { width: 100%; border-collapse: collapse; }
+        th, td { padding: 12px 20px; text-align: left; border-bottom: 1px solid var(--border); }
+        th {
+            background: var(--bg-secondary);
+            font-size: 0.7rem;
+            text-transform: uppercase;
+            color: var(--accent);
+            font-weight: 600;
+            letter-spacing: 1px;
+            font-family: 'Orbitron', sans-serif;
+        }
+        td { font-size: 0.8rem; }
+        tr { transition: background 0.2s; }
+        tr:hover { background: rgba(0, 255, 65, 0.05); }
+
+        .badge {
+            padding: 4px 10px;
+            border-radius: 2px;
+            font-size: 0.65rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            font-family: 'JetBrains Mono', monospace;
+        }
+        .badge-danger {
+            background: rgba(255, 51, 51, 0.15);
+            color: var(--danger);
+            border: 1px solid rgba(255, 51, 51, 0.3);
+        }
+        .badge-warning {
+            background: rgba(255, 184, 0, 0.15);
+            color: var(--warning);
+            border: 1px solid rgba(255, 184, 0, 0.3);
+        }
+        .badge-success {
+            background: rgba(0, 255, 65, 0.15);
+            color: var(--success);
+            border: 1px solid rgba(0, 255, 65, 0.3);
+        }
+        .badge-info {
+            background: rgba(0, 255, 65, 0.1);
+            color: var(--accent);
+            border: 1px solid var(--border-glow);
+        }
+
+        /* Pagination */
+        .pagination {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 12px 20px;
+            border-top: 1px solid var(--border);
+            background: var(--bg-secondary);
+        }
+        .pagination-info {
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+            font-family: 'JetBrains Mono', monospace;
+        }
+        .pagination-btns { display: flex; gap: 8px; }
+
+        /* Services */
+        .services-row { display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 20px; }
+        .service-badge {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 10px 16px;
+            background: var(--bg-card);
+            border-radius: 4px;
+            border: 1px solid var(--border);
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            transition: all 0.3s;
+        }
+        .service-badge:hover {
+            border-color: var(--accent);
+            box-shadow: 0 0 15px var(--accent-glow);
+        }
+        .service-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+        }
+        .service-dot.online {
+            background: var(--success);
+            box-shadow: 0 0 10px var(--success);
+            animation: statusPulse 1.5s infinite;
+        }
+        .service-dot.offline {
+            background: var(--danger);
+            box-shadow: 0 0 10px var(--danger);
+        }
+
+        /* Sync Info */
+        .sync-card {
+            background: var(--bg-card);
+            border-radius: 8px;
+            padding: 20px;
+            border: 1px solid var(--border);
+            margin-bottom: 20px;
+        }
+        .sync-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 14px 0;
+            border-bottom: 1px solid var(--border);
+            transition: background 0.2s;
+        }
+        .sync-row:hover { background: rgba(0, 255, 65, 0.03); }
+        .sync-row:last-child { border-bottom: none; }
+        .sync-source { display: flex; align-items: center; gap: 14px; }
+        .sync-icon {
+            width: 40px;
+            height: 40px;
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+            border-radius: 4px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            font-size: 0.9rem;
+            font-family: 'Orbitron', sans-serif;
+            color: var(--accent);
+        }
+        .sync-name {
+            font-weight: 600;
+            color: var(--text-bright);
+        }
+        .sync-meta {
+            font-size: 0.7rem;
+            color: var(--text-secondary);
+            font-family: 'JetBrains Mono', monospace;
+        }
+        .sync-actions { display: flex; align-items: center; gap: 16px; }
+        .sync-time {
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+            font-family: 'JetBrains Mono', monospace;
+        }
+
+        /* Countdown Timer Styles */
+        .sync-countdown {
+            display: flex;
+            flex-direction: column;
+            align-items: flex-end;
+            gap: 4px;
+            min-width: 180px;
+        }
+        .countdown-timer {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 1.1rem;
+            font-weight: 700;
+            color: var(--accent);
+            text-shadow: 0 0 10px var(--accent-glow);
+            letter-spacing: 2px;
+        }
+        .countdown-timer.urgent {
+            color: var(--warning);
+            text-shadow: 0 0 10px rgba(255, 184, 0, 0.5);
+            animation: urgentPulse 1s infinite;
+        }
+        .countdown-timer.syncing {
+            color: var(--accent-secondary);
+            animation: syncingGlow 0.5s infinite;
+        }
+        @keyframes urgentPulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.6; }
+        }
+        @keyframes syncingGlow {
+            0%, 100% { text-shadow: 0 0 10px var(--accent-glow); }
+            50% { text-shadow: 0 0 20px var(--accent-glow), 0 0 30px var(--accent-glow); }
+        }
+        .countdown-label {
+            font-size: 0.65rem;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        .countdown-progress {
+            width: 100%;
+            height: 3px;
+            background: var(--bg-secondary);
+            border-radius: 2px;
+            overflow: hidden;
+            margin-top: 4px;
+        }
+        .countdown-progress-bar {
+            height: 100%;
+            background: linear-gradient(90deg, var(--accent-dim), var(--accent));
+            border-radius: 2px;
+            transition: width 1s linear;
+            box-shadow: 0 0 8px var(--accent-glow);
+        }
+        .countdown-progress-bar.urgent {
+            background: linear-gradient(90deg, var(--warning), #ffcc00);
+            box-shadow: 0 0 8px rgba(255, 184, 0, 0.5);
+        }
+        .sync-info-row {
+            display: flex;
+            gap: 16px;
+            font-size: 0.7rem;
+            color: var(--text-secondary);
+        }
+        .sync-info-item {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+        .sync-info-item .label {
+            opacity: 0.7;
+        }
+        .sync-info-item .value {
+            color: var(--text-primary);
+        }
+
+        /* Toast */
+        .toast {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            padding: 14px 24px;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 4px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            transform: translateY(100px);
+            opacity: 0;
+            transition: all 0.3s;
+            z-index: 1000;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.8rem;
+        }
+        .toast.show { transform: translateY(0); opacity: 1; }
+        .toast.success {
+            border-color: var(--success);
+            box-shadow: 0 0 20px rgba(0, 255, 65, 0.3);
+        }
+        .toast.error {
+            border-color: var(--danger);
+            box-shadow: 0 0 20px rgba(255, 51, 51, 0.3);
+        }
+
+        .loading {
+            display: inline-block;
+            width: 14px;
+            height: 14px;
+            border: 2px solid var(--border);
+            border-top-color: var(--accent);
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        .empty-state {
+            text-align: center;
+            padding: 50px;
+            color: var(--text-secondary);
+            font-family: 'JetBrains Mono', monospace;
+        }
+        .last-update {
+            font-size: 0.7rem;
+            color: var(--text-secondary);
+            font-family: 'JetBrains Mono', monospace;
+        }
+
+        /* Glitch effect for important text */
+        @keyframes glitch {
+            0% { text-shadow: 2px 0 var(--danger), -2px 0 var(--accent); }
+            25% { text-shadow: -2px 0 var(--danger), 2px 0 var(--accent); }
+            50% { text-shadow: 2px 0 var(--accent), -2px 0 var(--danger); }
+            75% { text-shadow: -2px 0 var(--accent), 2px 0 var(--danger); }
+            100% { text-shadow: 2px 0 var(--danger), -2px 0 var(--accent); }
+        }
+
+        /* Terminal cursor effect */
+        .cursor-blink::after {
+            content: '_';
+            animation: blink 1s step-end infinite;
+        }
+        @keyframes blink { 50% { opacity: 0; } }
+
+        /* Scrollbar styling */
+        ::-webkit-scrollbar { width: 8px; height: 8px; }
+        ::-webkit-scrollbar-track { background: var(--bg-primary); }
+        ::-webkit-scrollbar-thumb {
+            background: var(--border);
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover { background: var(--accent-dim); }
+
+        /* Selection */
+        ::selection {
+            background: var(--accent);
+            color: var(--bg-primary);
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <div class="container">
+            <div class="logo">
+                <div class="logo-icon">FY</div>
+                <h1>FY <span>CONSOLE</span></h1>
+            </div>
+            <div class="header-actions">
+                <span class="last-update">[SYNC] <span id="lastUpdate">--:--:--</span></span>
+                <button class="btn btn-secondary btn-sm" onclick="refreshAll()">
+                    <span id="refreshIcon">⟳</span> RELOAD
+                </button>
+                <div class="status-indicator">
+                    <div class="status-dot" id="globalStatus"></div>
+                    <span id="globalStatusText">INIT...</span>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <main class="container">
+        <!-- Tabs -->
+        <div class="tabs">
+            <button class="tab active" onclick="showTab('dashboard')">Dashboard</button>
+            <button class="tab" onclick="showTab('domains')">Dominios</button>
+            <button class="tab" onclick="showTab('emails')">Emails</button>
+            <button class="tab" onclick="showTab('phones')">Telefonos</button>
+            <button class="tab" onclick="showTab('whitelist')">Whitelist</button>
+        </div>
+
+        <!-- Dashboard Tab -->
+        <div id="tab-dashboard" class="tab-content active">
+            <div class="services-row" id="servicesRow"></div>
+
+            <div class="grid">
+                <div class="card">
+                    <div class="card-title">Dominios</div>
+                    <div class="stat-value" id="domainsCount">-</div>
+                    <div class="stat-label">amenazas activas</div>
+                </div>
+                <div class="card">
+                    <div class="card-title">Paths/URLs</div>
+                    <div class="stat-value" id="pathsCount">-</div>
+                    <div class="stat-label">rutas maliciosas</div>
+                </div>
+                <div class="card">
+                    <div class="card-title">Emails</div>
+                    <div class="stat-value" id="emailsCount">-</div>
+                    <div class="stat-label">correos fraudulentos</div>
+                </div>
+                <div class="card">
+                    <div class="card-title">Telefonos</div>
+                    <div class="stat-value" id="phonesCount">-</div>
+                    <div class="stat-label">numeros reportados</div>
+                </div>
+                <div class="card">
+                    <div class="card-title">Whitelist</div>
+                    <div class="stat-value" id="whitelistCount">-</div>
+                    <div class="stat-label">dominios seguros</div>
+                </div>
+            </div>
+
+            <div class="sync-card">
+                <div class="card-header">
+                    <span class="card-title">Sincronizacion de Fuentes</span>
+                    <button class="btn btn-primary btn-sm" onclick="forceSync('all')" id="syncAllBtn">Sincronizar Todo</button>
+                </div>
+                <div id="syncSources"></div>
+            </div>
+
+            <div class="grid" style="grid-template-columns: 1fr 1fr 1fr;">
+                <div class="card">
+                    <div class="card-title" style="margin-bottom: 12px;">Dominios por Fuente</div>
+                    <div id="bySourceList"></div>
+                </div>
+                <div class="card">
+                    <div class="card-title" style="margin-bottom: 12px;">Emails por Fuente</div>
+                    <div id="emailsBySourceList"></div>
+                </div>
+                <div class="card">
+                    <div class="card-title" style="margin-bottom: 12px;">Por Tipo de Amenaza</div>
+                    <div id="byThreatList"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Domains Tab -->
+        <div id="tab-domains" class="tab-content">
+            <div class="table-container">
+                <div class="table-header">
+                    <span class="table-title">Dominios Maliciosos</span>
+                    <div class="table-actions">
+                        <input type="text" class="search-input" placeholder="Buscar dominio..." id="searchDomains" onkeyup="debounceSearch('domains')">
+                        <select class="search-input" style="width:140px" id="filterSource" onchange="loadDomains()">
+                            <option value="">Todas</option>
+                            <option value="urlhaus">URLhaus</option>
+                            <option value="openphish">OpenPhish</option>
+                            <option value="manual">Manual</option>
+                        </select>
+                    </div>
+                </div>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Dominio</th>
+                            <th>Tipo</th>
+                            <th>Severidad</th>
+                            <th>Confianza</th>
+                            <th>Fuente</th>
+                            <th>Visto</th>
+                        </tr>
+                    </thead>
+                    <tbody id="domainsTable"></tbody>
+                </table>
+                <div class="pagination">
+                    <span class="pagination-info" id="domainsPagInfo">-</span>
+                    <div class="pagination-btns">
+                        <button class="btn btn-secondary btn-sm" onclick="prevPage('domains')">← Anterior</button>
+                        <button class="btn btn-secondary btn-sm" onclick="nextPage('domains')">Siguiente →</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Emails Tab -->
+        <div id="tab-emails" class="tab-content">
+            <!-- Formulario para agregar email -->
+            <div class="card" style="margin-bottom: 16px;">
+                <div class="card-title" style="margin-bottom: 12px;">Agregar Email Manualmente</div>
+                <div style="display: flex; gap: 12px; flex-wrap: wrap; align-items: flex-end;">
+                    <div>
+                        <label style="font-size:0.75rem;color:var(--text-secondary)">Email</label>
+                        <input type="email" class="search-input" placeholder="spam@ejemplo.com" id="addEmail" style="width:250px">
+                    </div>
+                    <div>
+                        <label style="font-size:0.75rem;color:var(--text-secondary)">Tipo</label>
+                        <select class="search-input" id="addEmailType" style="width:120px">
+                            <option value="phishing">Phishing</option>
+                            <option value="spam">Spam</option>
+                            <option value="scam">Estafa</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label style="font-size:0.75rem;color:var(--text-secondary)">Suplanta a</label>
+                        <input type="text" class="search-input" placeholder="Banco, Amazon..." id="addEmailImpersonates" style="width:150px">
+                    </div>
+                    <button class="btn btn-primary" onclick="addEmail()">Agregar</button>
+                </div>
+            </div>
+
+            <div class="table-container">
+                <div class="table-header">
+                    <span class="table-title">Emails Fraudulentos</span>
+                    <div class="table-actions">
+                        <input type="text" class="search-input" placeholder="Buscar email..." id="searchEmails" onkeyup="debounceSearch('emails')">
+                        <select class="search-input" style="width:160px" id="filterEmailSource" onchange="loadEmails()">
+                            <option value="">Todas las fuentes</option>
+                            <option value="osint">StopForumSpam</option>
+                            <option value="manual">Manual</option>
+                            <option value="user_report">Reportes</option>
+                        </select>
+                    </div>
+                </div>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Email</th>
+                            <th>Dominio</th>
+                            <th>Tipo</th>
+                            <th>Confianza</th>
+                            <th>Fuente</th>
+                            <th>Reportes</th>
+                            <th>Visto</th>
+                        </tr>
+                    </thead>
+                    <tbody id="emailsTable"></tbody>
+                </table>
+                <div class="pagination">
+                    <span class="pagination-info" id="emailsPagInfo">-</span>
+                    <div class="pagination-btns">
+                        <button class="btn btn-secondary btn-sm" onclick="prevPage('emails')">← Anterior</button>
+                        <button class="btn btn-secondary btn-sm" onclick="nextPage('emails')">Siguiente →</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Phones Tab -->
+        <div id="tab-phones" class="tab-content">
+            <!-- Formulario para agregar teléfono -->
+            <div class="card" style="margin-bottom: 16px;">
+                <div class="card-title" style="margin-bottom: 12px;">Agregar Telefono Manualmente</div>
+                <div style="display: flex; gap: 12px; flex-wrap: wrap; align-items: flex-end;">
+                    <div>
+                        <label style="font-size:0.75rem;color:var(--text-secondary)">Codigo Pais</label>
+                        <input type="text" class="search-input" placeholder="+34" id="addPhoneCode" style="width:80px">
+                    </div>
+                    <div>
+                        <label style="font-size:0.75rem;color:var(--text-secondary)">Numero</label>
+                        <input type="text" class="search-input" placeholder="612345678" id="addPhoneNumber" style="width:150px">
+                    </div>
+                    <div>
+                        <label style="font-size:0.75rem;color:var(--text-secondary)">Tipo</label>
+                        <select class="search-input" id="addPhoneType" style="width:120px">
+                            <option value="scam">Estafa</option>
+                            <option value="spam">Spam</option>
+                            <option value="phishing">Phishing</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label style="font-size:0.75rem;color:var(--text-secondary)">Descripcion</label>
+                        <input type="text" class="search-input" placeholder="Descripcion..." id="addPhoneDesc" style="width:200px">
+                    </div>
+                    <button class="btn btn-primary" onclick="addPhone()">Agregar</button>
+                </div>
+            </div>
+
+            <div class="table-container">
+                <div class="table-header">
+                    <span class="table-title">Telefonos Reportados</span>
+                    <div class="table-actions">
+                        <input type="text" class="search-input" placeholder="Buscar telefono..." id="searchPhones" onkeyup="debounceSearch('phones')">
+                    </div>
+                </div>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Telefono</th>
+                            <th>Pais</th>
+                            <th>Tipo</th>
+                            <th>Severidad</th>
+                            <th>Descripcion</th>
+                            <th>Fuente</th>
+                        </tr>
+                    </thead>
+                    <tbody id="phonesTable"></tbody>
+                </table>
+                <div class="pagination">
+                    <span class="pagination-info" id="phonesPagInfo">-</span>
+                    <div class="pagination-btns">
+                        <button class="btn btn-secondary btn-sm" onclick="prevPage('phones')">← Anterior</button>
+                        <button class="btn btn-secondary btn-sm" onclick="nextPage('phones')">Siguiente →</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Whitelist Tab -->
+        <div id="tab-whitelist" class="tab-content">
+            <div class="table-container">
+                <div class="table-header">
+                    <span class="table-title">Dominios en Whitelist</span>
+                    <div class="table-actions">
+                        <input type="text" class="search-input" placeholder="Buscar..." id="searchWhitelist" onkeyup="debounceSearch('whitelist')">
+                    </div>
+                </div>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Dominio</th>
+                            <th>Marca</th>
+                            <th>Categoria</th>
+                            <th>Pais</th>
+                            <th>Nombre Oficial</th>
+                        </tr>
+                    </thead>
+                    <tbody id="whitelistTable"></tbody>
+                </table>
+                <div class="pagination">
+                    <span class="pagination-info" id="whitelistPagInfo">-</span>
+                    <div class="pagination-btns">
+                        <button class="btn btn-secondary btn-sm" onclick="prevPage('whitelist')">← Anterior</button>
+                        <button class="btn btn-secondary btn-sm" onclick="nextPage('whitelist')">Siguiente →</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <div class="toast" id="toast"><span id="toastMessage"></span></div>
+
+    <script>
+        const state = {
+            domains: { offset: 0, limit: 25, total: 0 },
+            emails: { offset: 0, limit: 25, total: 0 },
+            phones: { offset: 0, limit: 25, total: 0 },
+            whitelist: { offset: 0, limit: 25, total: 0 }
+        };
+        let searchTimeout;
+        let syncCountdowns = {}; // Store countdown data for each source
+        let countdownInterval = null;
+
+        function formatNum(n) {
+            if (n >= 1000000) return (n/1000000).toFixed(1) + 'M';
+            if (n >= 1000) return (n/1000).toFixed(1) + 'K';
+            return n?.toString() || '0';
+        }
+
+        function timeAgo(d) {
+            const diff = (Date.now() - new Date(d)) / 1000;
+            if (diff < 60) return Math.floor(diff) + 's';
+            if (diff < 3600) return Math.floor(diff/60) + 'm';
+            if (diff < 86400) return Math.floor(diff/3600) + 'h';
+            return Math.floor(diff/86400) + 'd';
+        }
+
+        function formatCountdown(seconds) {
+            if (seconds <= 0) return '00:00:00';
+            const h = Math.floor(seconds / 3600);
+            const m = Math.floor((seconds % 3600) / 60);
+            const s = Math.floor(seconds % 60);
+            return `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
+        }
+
+        function formatInterval(seconds) {
+            if (seconds >= 86400) return Math.floor(seconds / 86400) + 'h';
+            if (seconds >= 3600) return Math.floor(seconds / 3600) + 'h';
+            if (seconds >= 60) return Math.floor(seconds / 60) + 'm';
+            return seconds + 's';
+        }
+
+        function updateCountdowns() {
+            Object.keys(syncCountdowns).forEach(key => {
+                const data = syncCountdowns[key];
+                if (data.remaining > 0) {
+                    data.remaining--;
+                }
+
+                const timerEl = document.getElementById(`countdown-${key}`);
+                const progressEl = document.getElementById(`progress-${key}`);
+
+                if (timerEl) {
+                    const isUrgent = data.remaining > 0 && data.remaining < 60;
+                    const isReady = data.remaining <= 0;
+
+                    if (isReady) {
+                        timerEl.textContent = 'READY';
+                        timerEl.className = 'countdown-timer syncing';
+                    } else if (isUrgent) {
+                        timerEl.textContent = formatCountdown(data.remaining);
+                        timerEl.className = 'countdown-timer urgent';
+                    } else {
+                        timerEl.textContent = formatCountdown(data.remaining);
+                        timerEl.className = 'countdown-timer';
+                    }
+                }
+
+                if (progressEl && data.interval > 0) {
+                    const progress = Math.max(0, Math.min(100, (data.remaining / data.interval) * 100));
+                    const isUrgent = data.remaining > 0 && data.remaining < 60;
+                    progressEl.style.width = progress + '%';
+                    progressEl.className = 'countdown-progress-bar' + (isUrgent ? ' urgent' : '');
+                }
+            });
+        }
+
+        function showToast(msg, type='success') {
+            const t = document.getElementById('toast');
+            document.getElementById('toastMessage').textContent = msg;
+            t.className = 'toast ' + type + ' show';
+            setTimeout(() => t.classList.remove('show'), 3000);
+        }
+
+        function showTab(tab) {
+            document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+            document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+            document.querySelector(`[onclick="showTab('${tab}')"]`).classList.add('active');
+            document.getElementById('tab-' + tab).classList.add('active');
+            if (tab !== 'dashboard') window['load' + tab.charAt(0).toUpperCase() + tab.slice(1)]();
+        }
+
+        function severityBadge(s) {
+            const cls = s === 'critical' || s === 'high' ? 'danger' : s === 'medium' ? 'warning' : 'info';
+            return `<span class="badge badge-${cls}">${s}</span>`;
+        }
+
+        function threatBadge(t) {
+            const cls = t === 'phishing' ? 'danger' : t === 'malware' ? 'warning' : 'info';
+            return `<span class="badge badge-${cls}">${t}</span>`;
+        }
+
+        async function loadDashboard() {
+            const [stats, sources, services] = await Promise.all([
+                fetch('/api/stats/database').then(r => r.json()),
+                fetch('/api/stats/sources').then(r => r.json()),
+                fetch('/api/services/status').then(r => r.json())
+            ]);
+
+            document.getElementById('domainsCount').textContent = formatNum(stats.domains?.active || 0);
+            document.getElementById('pathsCount').textContent = formatNum(stats.paths?.active || 0);
+            document.getElementById('emailsCount').textContent = formatNum(stats.emails?.total || 0);
+            document.getElementById('phonesCount').textContent = formatNum(stats.phones?.total || 0);
+            document.getElementById('whitelistCount').textContent = formatNum(stats.whitelist?.total || 0);
+
+            // Services
+            const servRow = document.getElementById('servicesRow');
+            servRow.innerHTML = services.services.map(s => `
+                <div class="service-badge">
+                    <div class="service-dot ${s.status}"></div>
+                    <span>${s.name}</span>
+                </div>
+            `).join('');
+
+            const allOnline = services.services.every(s => s.status === 'online');
+            document.getElementById('globalStatus').style.background = allOnline ? 'var(--success)' : 'var(--warning)';
+            document.getElementById('globalStatusText').textContent = allOnline ? 'Online' : 'Parcial';
+
+            // Sync sources - mostrar siempre las 3 fuentes principales
+            const syncDiv = document.getElementById('syncSources');
+            const allSources = [
+                { key: 'urlhaus', icon: 'U', name: 'URLhaus', desc: 'Malware URLs', syncKey: 'urlhaus' },
+                { key: 'openphish', icon: 'O', name: 'OpenPhish', desc: 'Phishing URLs', syncKey: 'openphish' },
+                { key: 'osint', icon: 'S', name: 'StopForumSpam', desc: 'Spam Emails', syncKey: 'stopforumspam' }
+            ];
+
+            // Crear mapa de datos de sync_status
+            const syncData = {};
+            if (sources.sources?.length) {
+                sources.sources.forEach(s => {
+                    // Mapear phishtank a openphish
+                    const key = s.name === 'phishtank' ? 'openphish' : s.name;
+                    syncData[key] = s;
+                });
+            }
+
+            // Actualizar countdown data
+            allSources.forEach(src => {
+                const data = syncData[src.key];
+                if (data && data.remaining_seconds !== undefined) {
+                    syncCountdowns[src.key] = {
+                        remaining: data.remaining_seconds,
+                        interval: data.interval_seconds || 0
+                    };
+                }
+            });
+
+            // Iniciar interval de countdown si no existe
+            if (!countdownInterval) {
+                countdownInterval = setInterval(updateCountdowns, 1000);
+            }
+
+            // Intervalos por defecto cuando no hay datos en BD
+            const defaultIntervals = {
+                'urlhaus': 300,      // 5 min
+                'openphish': 3600,   // 1 hora
+                'osint': 86400       // 24 horas
+            };
+
+            syncDiv.innerHTML = allSources.map(src => {
+                const data = syncData[src.key];
+                const lastSync = data ? timeAgo(data.last_sync) : 'nunca';
+                const count = data ? formatNum(data.last_count) : '0';
+                const remaining = data?.remaining_seconds ?? -1;
+                const interval = data?.interval_seconds || defaultIntervals[src.key] || 3600;
+                const progress = (interval > 0 && remaining >= 0) ? Math.max(0, Math.min(100, (remaining / interval) * 100)) : 100;
+                const isUrgent = remaining >= 0 && remaining < 60;
+                const noData = !data || remaining < 0;
+
+                // Formato de intervalo
+                let intervalLabel;
+                if (interval >= 86400) intervalLabel = Math.floor(interval/86400) + 'd';
+                else if (interval >= 3600) intervalLabel = Math.floor(interval/3600) + 'h';
+                else intervalLabel = Math.floor(interval/60) + 'm';
+
+                // Estado del timer
+                let timerDisplay, timerClass = 'countdown-timer';
+                if (noData) {
+                    timerDisplay = 'WAITING...';
+                    timerClass += '';
+                } else if (remaining <= 0) {
+                    timerDisplay = 'READY';
+                    timerClass += ' syncing';
+                } else if (isUrgent) {
+                    timerDisplay = formatCountdown(remaining);
+                    timerClass += ' urgent';
+                } else {
+                    timerDisplay = formatCountdown(remaining);
+                }
+
+                return `
+                <div class="sync-row">
+                    <div class="sync-source">
+                        <div class="sync-icon">${src.icon}</div>
+                        <div>
+                            <div class="sync-name">${src.name}</div>
+                            <div class="sync-meta">${src.desc}</div>
+                            <div class="sync-info-row">
+                                <div class="sync-info-item">
+                                    <span class="label">RECORDS:</span>
+                                    <span class="value">${count}</span>
+                                </div>
+                                <div class="sync-info-item">
+                                    <span class="label">INTERVAL:</span>
+                                    <span class="value">${intervalLabel}</span>
+                                </div>
+                                <div class="sync-info-item">
+                                    <span class="label">LAST:</span>
+                                    <span class="value">${lastSync}</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="sync-countdown">
+                        <div class="countdown-label">NEXT SYNC</div>
+                        <div class="${timerClass}" id="countdown-${src.key}">
+                            ${timerDisplay}
+                        </div>
+                        <div class="countdown-progress">
+                            <div class="countdown-progress-bar${isUrgent ? ' urgent' : ''}" id="progress-${src.key}" style="width: ${progress}%"></div>
+                        </div>
+                    </div>
+                    <div class="sync-actions">
+                        <button class="btn btn-secondary btn-sm" onclick="forceSync('${src.syncKey}')" id="sync-${src.syncKey}">⟳ SYNC</button>
+                    </div>
+                </div>
+            `}).join('');
+
+            // By source (dominios)
+            const sourceNames = {
+                'urlhaus': 'URLhaus',
+                'openphish': 'OpenPhish',
+                'phishtank': 'OpenPhish',
+                'manual': 'Manual',
+                'osint': 'StopForumSpam',
+                'user_report': 'Reportes'
+            };
+            const bySrc = document.getElementById('bySourceList');
+            if (stats.by_source?.length) {
+                bySrc.innerHTML = stats.by_source.map(s => `
+                    <div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--border)">
+                        <span>${sourceNames[s.source] || s.source}</span>
+                        <strong>${formatNum(s.count)}</strong>
+                    </div>
+                `).join('');
+            }
+
+            // By source (emails)
+            const byEmailSrc = document.getElementById('emailsBySourceList');
+            if (stats.emails_by_source?.length) {
+                byEmailSrc.innerHTML = stats.emails_by_source.map(s => `
+                    <div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--border)">
+                        <span>${sourceNames[s.source] || s.source}</span>
+                        <strong>${formatNum(s.count)}</strong>
+                    </div>
+                `).join('');
+            } else {
+                byEmailSrc.innerHTML = '<div style="color:var(--text-secondary);text-align:center;padding:10px">Sin datos</div>';
+            }
+
+            // By threat
+            const byThreat = document.getElementById('byThreatList');
+            if (stats.by_threat_type?.length) {
+                byThreat.innerHTML = stats.by_threat_type.map(t => `
+                    <div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--border)">
+                        ${threatBadge(t.type)}
+                        <strong>${formatNum(t.count)}</strong>
+                    </div>
+                `).join('');
+            }
+
+            document.getElementById('lastUpdate').textContent = new Date().toLocaleTimeString();
+        }
+
+        async function loadDomains() {
+            const s = state.domains;
+            const search = document.getElementById('searchDomains').value;
+            const source = document.getElementById('filterSource').value;
+            let url = `/api/data/domains?limit=${s.limit}&offset=${s.offset}`;
+            if (search) url += `&search=${encodeURIComponent(search)}`;
+            if (source) url += `&source=${source}`;
+
+            const data = await fetch(url).then(r => r.json());
+            s.total = data.total || 0;
+
+            const tbody = document.getElementById('domainsTable');
+            if (!data.data?.length) {
+                tbody.innerHTML = '<tr><td colspan="6" class="empty-state">No hay datos</td></tr>';
+            } else {
+                tbody.innerHTML = data.data.map(d => `
+                    <tr>
+                        <td><strong>${d.domain}</strong></td>
+                        <td>${threatBadge(d.threat_type)}</td>
+                        <td>${severityBadge(d.severity)}</td>
+                        <td>${d.confidence}%</td>
+                        <td>${d.source}</td>
+                        <td>${timeAgo(d.last_seen)}</td>
+                    </tr>
+                `).join('');
+            }
+            document.getElementById('domainsPagInfo').textContent = `${s.offset + 1}-${Math.min(s.offset + s.limit, s.total)} de ${formatNum(s.total)}`;
+        }
+
+        function sourceBadge(src) {
+            const names = {
+                'osint': 'StopForumSpam',
+                'manual': 'Manual',
+                'user_report': 'Reporte',
+                'urlhaus': 'URLhaus',
+                'openphish': 'OpenPhish',
+                'phishtank': 'OpenPhish'
+            };
+            const name = names[src] || src;
+            return `<span class="badge badge-info">${name}</span>`;
+        }
+
+        function extractDomain(email) {
+            const parts = email.split('@');
+            return parts.length > 1 ? parts[1] : '-';
+        }
+
+        async function loadEmails() {
+            const s = state.emails;
+            const search = document.getElementById('searchEmails').value;
+            const source = document.getElementById('filterEmailSource').value;
+            let url = `/api/data/emails?limit=${s.limit}&offset=${s.offset}`;
+            if (search) url += `&search=${encodeURIComponent(search)}`;
+            if (source) url += `&source=${source}`;
+
+            const data = await fetch(url).then(r => r.json());
+            s.total = data.total || 0;
+
+            const tbody = document.getElementById('emailsTable');
+            if (!data.data?.length) {
+                tbody.innerHTML = '<tr><td colspan="7" class="empty-state">No hay datos</td></tr>';
+            } else {
+                tbody.innerHTML = data.data.map(d => `
+                    <tr>
+                        <td><strong>${d.email}</strong></td>
+                        <td style="color:var(--text-secondary)">${extractDomain(d.email)}</td>
+                        <td>${threatBadge(d.threat_type)}</td>
+                        <td>${d.confidence}%</td>
+                        <td>${sourceBadge(d.source)}</td>
+                        <td>${d.report_count || 1}</td>
+                        <td>${timeAgo(d.last_seen)}</td>
+                    </tr>
+                `).join('');
+            }
+            document.getElementById('emailsPagInfo').textContent = `${s.offset + 1}-${Math.min(s.offset + s.limit, s.total)} de ${formatNum(s.total)}`;
+        }
+
+        async function loadPhones() {
+            const s = state.phones;
+            const search = document.getElementById('searchPhones').value;
+            let url = `/api/data/phones?limit=${s.limit}&offset=${s.offset}`;
+            if (search) url += `&search=${encodeURIComponent(search)}`;
+
+            const data = await fetch(url).then(r => r.json());
+            s.total = data.total || 0;
+
+            const tbody = document.getElementById('phonesTable');
+            if (!data.data?.length) {
+                tbody.innerHTML = '<tr><td colspan="6" class="empty-state">No hay datos</td></tr>';
+            } else {
+                tbody.innerHTML = data.data.map(d => `
+                    <tr>
+                        <td><strong>+${d.country_code} ${d.phone}</strong></td>
+                        <td>+${d.country_code}</td>
+                        <td>${threatBadge(d.threat_type)}</td>
+                        <td>${severityBadge(d.severity)}</td>
+                        <td>${d.description || '-'}</td>
+                        <td>${d.source}</td>
+                    </tr>
+                `).join('');
+            }
+            document.getElementById('phonesPagInfo').textContent = `${s.offset + 1}-${Math.min(s.offset + s.limit, s.total)} de ${formatNum(s.total)}`;
+        }
+
+        async function loadWhitelist() {
+            const s = state.whitelist;
+            const search = document.getElementById('searchWhitelist').value;
+            let url = `/api/data/whitelist?limit=${s.limit}&offset=${s.offset}`;
+            if (search) url += `&search=${encodeURIComponent(search)}`;
+
+            const data = await fetch(url).then(r => r.json());
+            s.total = data.total || 0;
+
+            const tbody = document.getElementById('whitelistTable');
+            if (!data.data?.length) {
+                tbody.innerHTML = '<tr><td colspan="5" class="empty-state">No hay datos</td></tr>';
+            } else {
+                tbody.innerHTML = data.data.map(d => `
+                    <tr>
+                        <td><strong>${d.domain}</strong></td>
+                        <td>${d.brand || '-'}</td>
+                        <td><span class="badge badge-success">${d.category || '-'}</span></td>
+                        <td>${d.country || '-'}</td>
+                        <td>${d.official_name || '-'}</td>
+                    </tr>
+                `).join('');
+            }
+            document.getElementById('whitelistPagInfo').textContent = `${s.offset + 1}-${Math.min(s.offset + s.limit, s.total)} de ${formatNum(s.total)}`;
+        }
+
+        function prevPage(type) {
+            if (state[type].offset >= state[type].limit) {
+                state[type].offset -= state[type].limit;
+                window['load' + type.charAt(0).toUpperCase() + type.slice(1)]();
+            }
+        }
+
+        function nextPage(type) {
+            if (state[type].offset + state[type].limit < state[type].total) {
+                state[type].offset += state[type].limit;
+                window['load' + type.charAt(0).toUpperCase() + type.slice(1)]();
+            }
+        }
+
+        function debounceSearch(type) {
+            clearTimeout(searchTimeout);
+            searchTimeout = setTimeout(() => {
+                state[type].offset = 0;
+                window['load' + type.charAt(0).toUpperCase() + type.slice(1)]();
+            }, 300);
+        }
+
+        async function forceSync(source) {
+            // Deshabilitar botón específico o el de "Sync All"
+            const specificBtn = document.getElementById('sync-' + source);
+            const allBtn = document.getElementById('syncAllBtn');
+            const btn = specificBtn || allBtn;
+            const originalText = btn.innerHTML;
+
+            btn.disabled = true;
+            btn.innerHTML = '<span class="loading"></span>';
+
+            // También deshabilitar todos los botones de sync mientras se ejecuta
+            document.querySelectorAll('[id^="sync-"]').forEach(b => b.disabled = true);
+            allBtn.disabled = true;
+
+            try {
+                const res = await fetch(`/api/actions/sync?source=${source}`, { method: 'POST' });
+                const data = await res.json();
+                const sourceName = {
+                    'urlhaus': 'URLhaus',
+                    'openphish': 'OpenPhish',
+                    'stopforumspam': 'StopForumSpam',
+                    'all': 'Todas las fuentes'
+                }[source] || source;
+                showToast(data.success ? `Sync iniciado: ${sourceName}` : 'Error: ' + data.error, data.success ? 'success' : 'error');
+            } catch (e) {
+                showToast('Error de conexion', 'error');
+            }
+
+            // Rehabilitar todos los botones
+            document.querySelectorAll('[id^="sync-"]').forEach(b => {
+                b.disabled = false;
+                b.innerHTML = 'Sync';
+            });
+            allBtn.disabled = false;
+            allBtn.innerHTML = 'Sincronizar Todo';
+
+            // Actualizar dashboard después de un tiempo
+            setTimeout(loadDashboard, 5000);
+        }
+
+        async function refreshAll() {
+            const icon = document.getElementById('refreshIcon');
+            icon.innerHTML = '<span class="loading"></span>';
+            await loadDashboard();
+            icon.textContent = '↻';
+            showToast('Datos actualizados', 'success');
+        }
+
+        async function addPhone() {
+            const code = document.getElementById('addPhoneCode').value.replace(/[^0-9]/g, '');
+            const number = document.getElementById('addPhoneNumber').value.replace(/[^0-9]/g, '');
+            const type = document.getElementById('addPhoneType').value;
+            const desc = document.getElementById('addPhoneDesc').value;
+
+            if (!code || !number) {
+                showToast('Codigo de pais y numero son requeridos', 'error');
+                return;
+            }
+
+            try {
+                const res = await fetch('/api/add/phone', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        phone: number,
+                        country_code: code,
+                        threat_type: type,
+                        description: desc
+                    })
+                });
+                const data = await res.json();
+                if (data.success) {
+                    showToast('Telefono agregado correctamente', 'success');
+                    document.getElementById('addPhoneCode').value = '';
+                    document.getElementById('addPhoneNumber').value = '';
+                    document.getElementById('addPhoneDesc').value = '';
+                    loadPhones();
+                    loadDashboard();
+                } else {
+                    showToast('Error: ' + data.error, 'error');
+                }
+            } catch (e) {
+                showToast('Error de conexion', 'error');
+            }
+        }
+
+        async function addEmail() {
+            const email = document.getElementById('addEmail').value.trim();
+            const type = document.getElementById('addEmailType').value;
+            const impersonates = document.getElementById('addEmailImpersonates').value;
+
+            if (!email || !email.includes('@')) {
+                showToast('Email valido es requerido', 'error');
+                return;
+            }
+
+            try {
+                const res = await fetch('/api/add/email', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        email: email,
+                        threat_type: type,
+                        impersonates: impersonates
+                    })
+                });
+                const data = await res.json();
+                if (data.success) {
+                    showToast('Email agregado correctamente', 'success');
+                    document.getElementById('addEmail').value = '';
+                    document.getElementById('addEmailImpersonates').value = '';
+                    loadEmails();
+                    loadDashboard();
+                } else {
+                    showToast('Error: ' + data.error, 'error');
+                }
+            } catch (e) {
+                showToast('Error de conexion', 'error');
+            }
+        }
+
+        // Init
+        loadDashboard();
+        setInterval(loadDashboard, 60000);
+    </script>
+</body>
+</html>

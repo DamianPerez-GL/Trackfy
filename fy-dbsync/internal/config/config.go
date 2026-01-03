@@ -8,9 +8,8 @@ type Config struct {
 	Environment       string
 	LogLevel          string
 	DatabaseURL       string
-	PhishTankKey      string
 	URLhausInterval   string
-	PhishTankInterval string
+	OpenPhishInterval string
 }
 
 // Load carga la configuración desde variables de entorno
@@ -20,9 +19,8 @@ func Load() *Config {
 		Environment:       getEnv("ENVIRONMENT", "development"),
 		LogLevel:          getEnv("LOG_LEVEL", "info"),
 		DatabaseURL:       getEnv("DATABASE_URL", ""),
-		PhishTankKey:      getEnv("PHISHTANK_KEY", ""),
 		URLhausInterval:   getEnv("URLHAUS_INTERVAL", "5m"),
-		PhishTankInterval: getEnv("PHISHTANK_INTERVAL", "1h"),
+		OpenPhishInterval: getEnv("OPENPHISH_INTERVAL", "1h"),
 	}
 }
 

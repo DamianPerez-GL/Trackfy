@@ -14,45 +14,43 @@ import (
 	"github.com/rs/zerolog/log"
 )
 
-// URLhaus CSV en texto plano (más estable que el CSV normal)
-const urlhausDownloadURL = "https://urlhaus.abuse.ch/downloads/text/"
+const openPhishURL = "https://openphish.com/feed.txt"
 
-// URLhausImporter descarga e importa datos de URLhaus directamente a PostgreSQL
-type URLhausImporter struct {
+// OpenPhishImporter descarga e importa datos de OpenPhish directamente a PostgreSQL
+type OpenPhishImporter struct {
 	db        *sql.DB
 	lastStats ImportStats
 }
 
-// NewURLhausImporter crea un nuevo importer de URLhaus
-func NewURLhausImporter(db *sql.DB) *URLhausImporter {
-	return &URLhausImporter{db: db}
+// NewOpenPhishImporter crea un nuevo importer de OpenPhish
+func NewOpenPhishImporter(db *sql.DB) *OpenPhishImporter {
+	return &OpenPhishImporter{db: db}
 }
 
 // Name retorna el nombre del importer
-func (i *URLhausImporter) Name() string {
-	return "urlhaus"
+func (i *OpenPhishImporter) Name() string {
+	return "openphish"
 }
 
 // GetStats retorna las estadísticas de la última importación
-func (i *URLhausImporter) GetStats() ImportStats {
+func (i *OpenPhishImporter) GetStats() ImportStats {
 	return i.lastStats
 }
 
-// Sync descarga e importa los datos directamente a PostgreSQL (sin archivos intermedios)
-func (i *URLhausImporter) Sync(ctx context.Context) error {
+// Sync descarga e importa los datos directamente a PostgreSQL
+func (i *OpenPhishImporter) Sync(ctx context.Context) error {
 	startTime := time.Now()
 	stats := ImportStats{LastImport: startTime}
 
-	log.Info().Str("url", urlhausDownloadURL).Msg("[URLhaus] Downloading and importing to PostgreSQL...")
+	log.Info().Str("url", openPhishURL).Msg("[OpenPhish] Downloading and importing to PostgreSQL...")
 
-	// Descargar datos
-	req, err := http.NewRequestWithContext(ctx, "GET", urlhausDownloadURL, nil)
+	req, err := http.NewRequestWithContext(ctx, "GET", openPhishURL, nil)
 	if err != nil {
 		return fmt.Errorf("failed to create request: %w", err)
 	}
 	req.Header.Set("User-Agent", "Fy-DBSync/1.0")
 
-	client := &http.Client{Timeout: 120 * time.Second}
+	client := &http.Client{Timeout: 60 * time.Second}
 	resp, err := client.Do(req)
 	if err != nil {
 		return fmt.Errorf("failed to download: %w", err)
@@ -63,17 +61,14 @@ func (i *URLhausImporter) Sync(ctx context.Context) error {
 		return fmt.Errorf("download failed with status: %d", resp.StatusCode)
 	}
 
-	log.Info().Msg("[URLhaus] Download complete, parsing and importing...")
+	log.Info().Msg("[OpenPhish] Download complete, parsing and importing...")
 
-	// Parsear línea por línea (formato texto: una URL por línea)
+	// Parsear línea por línea
 	scanner := bufio.NewScanner(resp.Body)
-	buf := make([]byte, 0, 64*1024)
-	scanner.Buffer(buf, 1024*1024)
-
 	lineNum := 0
 	inserted := int64(0)
-	batchSize := 500
-	var batch []domainEntry
+	batchSize := 100
+	var batch []phishEntry
 
 	for scanner.Scan() {
 		select {
@@ -102,53 +97,47 @@ func (i *URLhausImporter) Sync(ctx context.Context) error {
 			continue
 		}
 
-		// Remover puerto
-		if idx := strings.Index(domain, ":"); idx != -1 {
-			domain = domain[:idx]
-		}
-
 		// Saltar IPs
 		if net.ParseIP(domain) != nil {
 			continue
 		}
 
-		batch = append(batch, domainEntry{
+		batch = append(batch, phishEntry{
 			domain:   domain,
 			path:     parsedURL.Path,
-			sourceID: fmt.Sprintf("urlhaus-%d", lineNum),
+			sourceID: fmt.Sprintf("openphish-%d", lineNum),
 			tld:      extractTLD(domain),
 		})
 
 		if len(batch) >= batchSize {
-			n, errs := i.insertBatch(ctx, batch, "malware", "high", 85)
+			n, errs := i.insertBatch(ctx, batch)
 			inserted += n
 			stats.Errors += errs
 			batch = batch[:0]
-			log.Info().Int("processed", lineNum).Int64("inserted", inserted).Msg("[URLhaus] Import progress")
 		}
 	}
 
 	// Insertar último batch
 	if len(batch) > 0 {
-		n, errs := i.insertBatch(ctx, batch, "malware", "high", 85)
+		n, errs := i.insertBatch(ctx, batch)
 		inserted += n
 		stats.Errors += errs
 	}
 
 	if err := scanner.Err(); err != nil {
-		log.Error().Err(err).Msg("[URLhaus] Scanner error")
+		log.Error().Err(err).Msg("[OpenPhish] Scanner error")
 	}
 
-	// Actualizar sync_status (sin transacción)
+	// Actualizar sync_status
 	_, err = i.db.ExecContext(ctx, `
 		INSERT INTO sync_status (source, last_sync, last_count)
-		VALUES ('urlhaus'::source_enum, NOW(), $1)
+		VALUES ('phishtank'::source_enum, NOW(), $1)
 		ON CONFLICT (source) DO UPDATE SET
 			last_sync = NOW(),
 			last_count = $1
 	`, inserted)
 	if err != nil {
-		log.Error().Err(err).Msg("[URLhaus] Failed to update sync_status")
+		log.Error().Err(err).Msg("[OpenPhish] Failed to update sync_status")
 	}
 
 	stats.Duration = time.Since(startTime)
@@ -159,33 +148,32 @@ func (i *URLhausImporter) Sync(ctx context.Context) error {
 		Int64("inserted", inserted).
 		Int64("errors", stats.Errors).
 		Dur("duration", stats.Duration).
-		Msg("[URLhaus] Import completed")
+		Msg("[OpenPhish] Import completed")
 
 	return nil
 }
 
-type domainEntry struct {
+type phishEntry struct {
 	domain   string
 	path     string
 	sourceID string
 	tld      string
 }
 
-// insertBatch inserta un batch de dominios, cada uno en su propia mini-transacción
-func (i *URLhausImporter) insertBatch(ctx context.Context, batch []domainEntry, threatType, severity string, confidence int16) (int64, int64) {
+// insertBatch inserta un batch de dominios de phishing
+func (i *OpenPhishImporter) insertBatch(ctx context.Context, batch []phishEntry) (int64, int64) {
 	var inserted, errors int64
 	now := time.Now()
 
 	for _, entry := range batch {
-		// Cada inserción es independiente
 		_, err := i.db.ExecContext(ctx, `
 			INSERT INTO threat_domains (domain_hash, domain, threat_type, severity, confidence, source, source_id, tld, first_seen, last_seen, flags)
-			VALUES (sha256_bytea($1), $1, $2::threat_type_enum, $3::severity_enum, $4, 'urlhaus'::source_enum, $5, $6, $7, $8, 1)
+			VALUES (sha256_bytea($1), $1, 'phishing'::threat_type_enum, 'high'::severity_enum, 90, 'phishtank'::source_enum, $2, $3, $4, $5, 1)
 			ON CONFLICT (domain_hash) DO UPDATE SET
 				last_seen = EXCLUDED.last_seen,
 				hit_count = threat_domains.hit_count + 1,
 				confidence = GREATEST(threat_domains.confidence, EXCLUDED.confidence)
-		`, entry.domain, threatType, severity, confidence, entry.sourceID, entry.tld, now, now)
+		`, entry.domain, entry.sourceID, entry.tld, now, now)
 
 		if err != nil {
 			errors++
@@ -198,34 +186,11 @@ func (i *URLhausImporter) insertBatch(ctx context.Context, batch []domainEntry, 
 			fullPath := entry.domain + entry.path
 			i.db.ExecContext(ctx, `
 				INSERT INTO threat_paths (path_hash, domain_hash, path, threat_type, severity, confidence, source, first_seen, last_seen, flags)
-				VALUES (sha256_bytea($1), sha256_bytea($2), $3, $4::threat_type_enum, $5::severity_enum, $6, 'urlhaus'::source_enum, $7, $8, 1)
+				VALUES (sha256_bytea($1), sha256_bytea($2), $3, 'phishing'::threat_type_enum, 'high'::severity_enum, 90, 'phishtank'::source_enum, $4, $5, 1)
 				ON CONFLICT (path_hash) DO UPDATE SET last_seen = EXCLUDED.last_seen
-			`, fullPath, entry.domain, entry.path, threatType, severity, confidence, now, now)
+			`, fullPath, entry.domain, entry.path, now, now)
 		}
 	}
 
 	return inserted, errors
-}
-
-func mapURLhausThreat(threat string) string {
-	switch strings.ToLower(strings.TrimSpace(threat)) {
-	case "malware_download":
-		return "malware"
-	case "phishing":
-		return "phishing"
-	case "cryptojacking":
-		return "cryptojacking"
-	case "ransomware":
-		return "ransomware"
-	default:
-		return "malware"
-	}
-}
-
-func extractTLD(domain string) string {
-	parts := strings.Split(domain, ".")
-	if len(parts) >= 2 {
-		return parts[len(parts)-1]
-	}
-	return ""
 }

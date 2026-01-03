@@ -34,8 +34,7 @@ func main() {
 
 	// Crear syncer
 	dbSyncer, err := syncer.NewDBSyncer(&syncer.SyncerConfig{
-		DatabaseURL:  cfg.DatabaseURL,
-		PhishTankKey: cfg.PhishTankKey,
+		DatabaseURL: cfg.DatabaseURL,
 	})
 	if err != nil {
 		log.Fatal().Err(err).Msg("Failed to create syncer")

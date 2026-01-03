@@ -12,20 +12,22 @@ import (
 
 // DBSyncer maneja la sincronización periódica de las bases de datos de amenazas
 type DBSyncer struct {
-	db                *sql.DB
-	urlhausImporter   importer.Importer
-	phishtankImporter importer.Importer
-	urlhausInterval   time.Duration
-	phishtankInterval time.Duration
-	stopCh            chan struct{}
+	db                    *sql.DB
+	urlhausImporter       importer.Importer
+	openphishImporter     importer.Importer
+	stopforumspamImporter importer.Importer
+	urlhausInterval       time.Duration
+	openphishInterval     time.Duration
+	emailsInterval        time.Duration
+	stopCh                chan struct{}
 }
 
 // SyncerConfig configuración para el syncer
 type SyncerConfig struct {
 	DatabaseURL       string
-	PhishTankKey      string
 	URLhausInterval   time.Duration
-	PhishTankInterval time.Duration
+	OpenPhishInterval time.Duration
+	EmailsInterval    time.Duration
 }
 
 // NewDBSyncer crea un nuevo sincronizador de DBs
@@ -58,18 +60,24 @@ func NewDBSyncer(cfg *SyncerConfig) (*DBSyncer, error) {
 	if urlhausInterval == 0 {
 		urlhausInterval = 5 * time.Minute
 	}
-	phishtankInterval := cfg.PhishTankInterval
-	if phishtankInterval == 0 {
-		phishtankInterval = 1 * time.Hour
+	openphishInterval := cfg.OpenPhishInterval
+	if openphishInterval == 0 {
+		openphishInterval = 1 * time.Hour
+	}
+	emailsInterval := cfg.EmailsInterval
+	if emailsInterval == 0 {
+		emailsInterval = 24 * time.Hour // Emails se actualizan cada 24h
 	}
 
 	return &DBSyncer{
-		db:                db,
-		urlhausImporter:   importer.NewURLhausImporter(db),
-		phishtankImporter: importer.NewPhishTankImporter(db, cfg.PhishTankKey),
-		urlhausInterval:   urlhausInterval,
-		phishtankInterval: phishtankInterval,
-		stopCh:            make(chan struct{}),
+		db:                    db,
+		urlhausImporter:       importer.NewURLhausImporter(db),
+		openphishImporter:     importer.NewOpenPhishImporter(db),
+		stopforumspamImporter: importer.NewStopForumSpamImporter(db),
+		urlhausInterval:       urlhausInterval,
+		openphishInterval:     openphishInterval,
+		emailsInterval:        emailsInterval,
+		stopCh:                make(chan struct{}),
 	}, nil
 }
 
@@ -77,7 +85,8 @@ func NewDBSyncer(cfg *SyncerConfig) (*DBSyncer, error) {
 func (s *DBSyncer) Start(ctx context.Context) {
 	log.Info().
 		Dur("urlhaus_interval", s.urlhausInterval).
-		Dur("phishtank_interval", s.phishtankInterval).
+		Dur("openphish_interval", s.openphishInterval).
+		Dur("emails_interval", s.emailsInterval).
 		Msg("[DBSyncer] Starting threat database synchronization")
 
 	// Sincronización inicial
@@ -86,8 +95,11 @@ func (s *DBSyncer) Start(ctx context.Context) {
 	// Goroutine para URLhaus
 	go s.syncLoop(ctx, s.urlhausImporter, s.urlhausInterval)
 
-	// Goroutine para PhishTank
-	go s.syncLoop(ctx, s.phishtankImporter, s.phishtankInterval)
+	// Goroutine para OpenPhish
+	go s.syncLoop(ctx, s.openphishImporter, s.openphishInterval)
+
+	// Goroutine para StopForumSpam (emails)
+	go s.syncLoop(ctx, s.stopforumspamImporter, s.emailsInterval)
 }
 
 // Stop detiene la sincronización
@@ -110,10 +122,17 @@ func (s *DBSyncer) syncNow(ctx context.Context) {
 		}
 	}
 
-	// PhishTank
-	if s.phishtankImporter != nil {
-		if err := s.phishtankImporter.Sync(ctx); err != nil {
-			log.Error().Err(err).Msg("[DBSyncer] Failed to sync PhishTank")
+	// OpenPhish
+	if s.openphishImporter != nil {
+		if err := s.openphishImporter.Sync(ctx); err != nil {
+			log.Error().Err(err).Msg("[DBSyncer] Failed to sync OpenPhish")
+		}
+	}
+
+	// StopForumSpam (emails)
+	if s.stopforumspamImporter != nil {
+		if err := s.stopforumspamImporter.Sync(ctx); err != nil {
+			log.Error().Err(err).Msg("[DBSyncer] Failed to sync StopForumSpam")
 		}
 	}
 
@@ -172,9 +191,19 @@ func (s *DBSyncer) GetStatus() map[string]interface{} {
 		}
 	}
 
-	if s.phishtankImporter != nil {
-		stats := s.phishtankImporter.GetStats()
-		status["phishtank"] = map[string]interface{}{
+	if s.openphishImporter != nil {
+		stats := s.openphishImporter.GetStats()
+		status["openphish"] = map[string]interface{}{
+			"last_sync":     stats.LastImport.Format(time.RFC3339),
+			"total_records": stats.TotalRecords,
+			"errors":        stats.Errors,
+			"duration_ms":   stats.Duration.Milliseconds(),
+		}
+	}
+
+	if s.stopforumspamImporter != nil {
+		stats := s.stopforumspamImporter.GetStats()
+		status["stopforumspam"] = map[string]interface{}{
 			"last_sync":     stats.LastImport.Format(time.RFC3339),
 			"total_records": stats.TotalRecords,
 			"errors":        stats.Errors,
@@ -192,9 +221,13 @@ func (s *DBSyncer) ForceSync(ctx context.Context, source string) error {
 		if s.urlhausImporter != nil {
 			return s.urlhausImporter.Sync(ctx)
 		}
-	case "phishtank":
-		if s.phishtankImporter != nil {
-			return s.phishtankImporter.Sync(ctx)
+	case "openphish":
+		if s.openphishImporter != nil {
+			return s.openphishImporter.Sync(ctx)
+		}
+	case "stopforumspam", "emails":
+		if s.stopforumspamImporter != nil {
+			return s.stopforumspamImporter.Sync(ctx)
 		}
 	case "all":
 		s.syncNow(ctx)

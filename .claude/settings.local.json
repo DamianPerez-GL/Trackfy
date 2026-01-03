@@ -20,7 +20,16 @@
       "Bash(echo \"FAIL\" echo -n \"Fy-Engine: \" curl -s http://localhost:8082/health)",
       "Bash(pip install:*)",
       "Bash(flutter pub get:*)",
-      "Bash(dir:*)"
+      "Bash(dir:*)",
+      "Bash(docker compose build:*)",
+      "Bash(docker compose:*)",
+      "Bash(docker compose logs:*)",
+      "Bash(go build:*)",
+      "Bash(/c/Program Files/Go/bin/go.exe build:*)",
+      "Bash(\"/c/Program Files/Go/bin/go.exe\" build -o fy-admin.exe .)",
+      "Bash(export PATH=\"$PATH:/c/Users/Lenovo/go/bin:/c/Program Files/Go/bin\")",
+      "Bash(cmd.exe /c \"go version\")",
+      "Bash(cmd.exe /c \"cd c:\\\\Users\\\\Lenovo\\\\Proyectos\\\\GL\\\\Trackfy\\\\fy-admin && go build -o fy-admin.exe .\":*)"
     ],
     "deny": [],
     "ask": []

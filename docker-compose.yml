@@ -150,6 +150,35 @@ services:
       start_period: 30s
 
   # -----------------------------------------
+  # Fy-Admin - Panel de Administracion
+  # Puerto: 9092
+  # -----------------------------------------
+  fy-admin:
+    build:
+      context: ./fy-admin
+      dockerfile: Dockerfile
+    container_name: fy-admin
+    ports:
+      - "9092:9092"
+    environment:
+      - PORT=9092
+      - DATABASE_URL=postgres://trackfy:trackfy_secret@postgres:5432/fy_threats?sslmode=disable
+      - DBSYNC_URL=http://fy-dbsync:9091
+      - ANALYSIS_URL=http://fy-analysis:9090
+    restart: unless-stopped
+    networks:
+      - trackfy-network
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:9092/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
+  # -----------------------------------------
   # PostgreSQL - Base de datos de amenazas
   # Puerto: 5432
   # -----------------------------------------
