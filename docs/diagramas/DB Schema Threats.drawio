@@ -1,6 +1,6 @@
-<mxfile host="app.diagrams.net" modified="2024-01-15T10:00:00.000Z" agent="Claude" version="22.1.0">
+<mxfile host="app.diagrams.net" modified="2026-01-08T10:00:00.000Z" agent="Claude" version="22.1.0">
   <diagram name="PostgreSQL Threats" id="db-threats">
-    <mxGraphModel dx="1400" dy="900" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1400" pageHeight="900" math="0" shadow="0">
+    <mxGraphModel dx="1500" dy="1000" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1500" pageHeight="1000" math="0" shadow="0">
       <root>
         <mxCell id="0" />
         <mxCell id="1" parent="0" />
@@ -12,7 +12,7 @@
 
         <!-- TABLA: threat_domains -->
         <mxCell id="domains" value="" style="shape=table;startSize=30;container=1;collapsible=0;childLayout=tableLayout;fixedRows=1;rowLines=1;fontStyle=1;align=center;resizeLast=1;fillColor=#f8cecc;strokeColor=#b85450;" vertex="1" parent="1">
-          <mxGeometry x="40" y="80" width="280" height="300" as="geometry" />
+          <mxGeometry x="40" y="80" width="280" height="330" as="geometry" />
         </mxCell>
         <mxCell id="domains_header" value="threat_domains" style="shape=tableRow;horizontal=0;startSize=0;swimlaneHead=0;swimlaneBody=0;fillColor=#b85450;strokeColor=#b85450;fontStyle=1;fontColor=#FFFFFF;align=center;" vertex="1" parent="domains">
           <mxGeometry width="280" height="30" as="geometry" />
@@ -47,7 +47,7 @@
         <mxCell id="domains_r3c1" value="threat_type" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;" vertex="1" parent="domains_r3">
           <mxGeometry width="140" height="30" as="geometry" />
         </mxCell>
-        <mxCell id="domains_r3c2" value="ENUM" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;" vertex="1" parent="domains_r3">
+        <mxCell id="domains_r3c2" value="threat_type_enum" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;" vertex="1" parent="domains_r3">
           <mxGeometry x="140" width="140" height="30" as="geometry" />
         </mxCell>
         <mxCell id="domains_r4" value="" style="shape=tableRow;horizontal=0;startSize=0;swimlaneHead=0;swimlaneBody=0;fillColor=none;strokeColor=inherit;" vertex="1" parent="domains">
@@ -56,7 +56,7 @@
         <mxCell id="domains_r4c1" value="severity" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;" vertex="1" parent="domains_r4">
           <mxGeometry width="140" height="30" as="geometry" />
         </mxCell>
-        <mxCell id="domains_r4c2" value="ENUM" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;" vertex="1" parent="domains_r4">
+        <mxCell id="domains_r4c2" value="severity_enum" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;" vertex="1" parent="domains_r4">
           <mxGeometry x="140" width="140" height="30" as="geometry" />
         </mxCell>
         <mxCell id="domains_r5" value="" style="shape=tableRow;horizontal=0;startSize=0;swimlaneHead=0;swimlaneBody=0;fillColor=none;strokeColor=inherit;" vertex="1" parent="domains">
@@ -74,22 +74,22 @@
         <mxCell id="domains_r6c1" value="source" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;" vertex="1" parent="domains_r6">
           <mxGeometry width="140" height="30" as="geometry" />
         </mxCell>
-        <mxCell id="domains_r6c2" value="ENUM" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;" vertex="1" parent="domains_r6">
+        <mxCell id="domains_r6c2" value="source_enum" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;" vertex="1" parent="domains_r6">
           <mxGeometry x="140" width="140" height="30" as="geometry" />
         </mxCell>
         <mxCell id="domains_r7" value="" style="shape=tableRow;horizontal=0;startSize=0;swimlaneHead=0;swimlaneBody=0;fillColor=none;strokeColor=inherit;" vertex="1" parent="domains">
           <mxGeometry y="210" width="280" height="30" as="geometry" />
         </mxCell>
-        <mxCell id="domains_r7c1" value="impersonates_hash (FK)" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;fontStyle=2;" vertex="1" parent="domains_r7">
+        <mxCell id="domains_r7c1" value="tld" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;" vertex="1" parent="domains_r7">
           <mxGeometry width="140" height="30" as="geometry" />
         </mxCell>
-        <mxCell id="domains_r7c2" value="BYTEA" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;" vertex="1" parent="domains_r7">
+        <mxCell id="domains_r7c2" value="VARCHAR(20)" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;" vertex="1" parent="domains_r7">
           <mxGeometry x="140" width="140" height="30" as="geometry" />
         </mxCell>
         <mxCell id="domains_r8" value="" style="shape=tableRow;horizontal=0;startSize=0;swimlaneHead=0;swimlaneBody=0;fillColor=none;strokeColor=inherit;" vertex="1" parent="domains">
           <mxGeometry y="240" width="280" height="30" as="geometry" />
         </mxCell>
-        <mxCell id="domains_r8c1" value="first_seen" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;" vertex="1" parent="domains_r8">
+        <mxCell id="domains_r8c1" value="first_seen / last_seen" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;" vertex="1" parent="domains_r8">
           <mxGeometry width="140" height="30" as="geometry" />
         </mxCell>
         <mxCell id="domains_r8c2" value="TIMESTAMP" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;" vertex="1" parent="domains_r8">
@@ -98,16 +98,25 @@
         <mxCell id="domains_r9" value="" style="shape=tableRow;horizontal=0;startSize=0;swimlaneHead=0;swimlaneBody=0;fillColor=none;strokeColor=inherit;" vertex="1" parent="domains">
           <mxGeometry y="270" width="280" height="30" as="geometry" />
         </mxCell>
-        <mxCell id="domains_r9c1" value="flags" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;" vertex="1" parent="domains_r9">
+        <mxCell id="domains_r9c1" value="hit_count" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;" vertex="1" parent="domains_r9">
           <mxGeometry width="140" height="30" as="geometry" />
         </mxCell>
-        <mxCell id="domains_r9c2" value="SMALLINT" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;" vertex="1" parent="domains_r9">
+        <mxCell id="domains_r9c2" value="INTEGER" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;" vertex="1" parent="domains_r9">
+          <mxGeometry x="140" width="140" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="domains_r10" value="" style="shape=tableRow;horizontal=0;startSize=0;swimlaneHead=0;swimlaneBody=0;fillColor=none;strokeColor=inherit;" vertex="1" parent="domains">
+          <mxGeometry y="300" width="280" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="domains_r10c1" value="flags" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;" vertex="1" parent="domains_r10">
+          <mxGeometry width="140" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="domains_r10c2" value="SMALLINT" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;" vertex="1" parent="domains_r10">
           <mxGeometry x="140" width="140" height="30" as="geometry" />
         </mxCell>
 
         <!-- TABLA: threat_paths -->
         <mxCell id="paths" value="" style="shape=table;startSize=30;container=1;collapsible=0;childLayout=tableLayout;fixedRows=1;rowLines=1;fontStyle=1;align=center;resizeLast=1;fillColor=#ffe6cc;strokeColor=#d79b00;" vertex="1" parent="1">
-          <mxGeometry x="40" y="420" width="280" height="240" as="geometry" />
+          <mxGeometry x="40" y="450" width="280" height="240" as="geometry" />
         </mxCell>
         <mxCell id="paths_header" value="threat_paths" style="shape=tableRow;horizontal=0;startSize=0;swimlaneHead=0;swimlaneBody=0;fillColor=#d79b00;strokeColor=#d79b00;fontStyle=1;fontColor=#FFFFFF;align=center;" vertex="1" parent="paths">
           <mxGeometry width="280" height="30" as="geometry" />
@@ -148,7 +157,7 @@
         <mxCell id="paths_r4" value="" style="shape=tableRow;horizontal=0;startSize=0;swimlaneHead=0;swimlaneBody=0;fillColor=none;strokeColor=inherit;" vertex="1" parent="paths">
           <mxGeometry y="120" width="280" height="30" as="geometry" />
         </mxCell>
-        <mxCell id="paths_r4c1" value="threat_type" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;" vertex="1" parent="paths_r4">
+        <mxCell id="paths_r4c1" value="threat_type / severity" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;" vertex="1" parent="paths_r4">
           <mxGeometry width="140" height="30" as="geometry" />
         </mxCell>
         <mxCell id="paths_r4c2" value="ENUM" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;" vertex="1" parent="paths_r4">
@@ -157,19 +166,19 @@
         <mxCell id="paths_r5" value="" style="shape=tableRow;horizontal=0;startSize=0;swimlaneHead=0;swimlaneBody=0;fillColor=none;strokeColor=inherit;" vertex="1" parent="paths">
           <mxGeometry y="150" width="280" height="30" as="geometry" />
         </mxCell>
-        <mxCell id="paths_r5c1" value="target_brand" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;" vertex="1" parent="paths_r5">
+        <mxCell id="paths_r5c1" value="source" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;" vertex="1" parent="paths_r5">
           <mxGeometry width="140" height="30" as="geometry" />
         </mxCell>
-        <mxCell id="paths_r5c2" value="VARCHAR(50)" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;" vertex="1" parent="paths_r5">
+        <mxCell id="paths_r5c2" value="source_enum" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;" vertex="1" parent="paths_r5">
           <mxGeometry x="140" width="140" height="30" as="geometry" />
         </mxCell>
         <mxCell id="paths_r6" value="" style="shape=tableRow;horizontal=0;startSize=0;swimlaneHead=0;swimlaneBody=0;fillColor=none;strokeColor=inherit;" vertex="1" parent="paths">
           <mxGeometry y="180" width="280" height="30" as="geometry" />
         </mxCell>
-        <mxCell id="paths_r6c1" value="source" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;" vertex="1" parent="paths_r6">
+        <mxCell id="paths_r6c1" value="first_seen / last_seen" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;" vertex="1" parent="paths_r6">
           <mxGeometry width="140" height="30" as="geometry" />
         </mxCell>
-        <mxCell id="paths_r6c2" value="ENUM" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;" vertex="1" parent="paths_r6">
+        <mxCell id="paths_r6c2" value="TIMESTAMP" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;" vertex="1" parent="paths_r6">
           <mxGeometry x="140" width="140" height="30" as="geometry" />
         </mxCell>
         <mxCell id="paths_r7" value="" style="shape=tableRow;horizontal=0;startSize=0;swimlaneHead=0;swimlaneBody=0;fillColor=none;strokeColor=inherit;" vertex="1" parent="paths">
@@ -252,7 +261,7 @@
 
         <!-- TABLA: threat_emails -->
         <mxCell id="emails" value="" style="shape=table;startSize=30;container=1;collapsible=0;childLayout=tableLayout;fixedRows=1;rowLines=1;fontStyle=1;align=center;resizeLast=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1">
-          <mxGeometry x="720" y="80" width="280" height="240" as="geometry" />
+          <mxGeometry x="720" y="80" width="280" height="270" as="geometry" />
         </mxCell>
         <mxCell id="emails_header" value="threat_emails" style="shape=tableRow;horizontal=0;startSize=0;swimlaneHead=0;swimlaneBody=0;fillColor=#6c8ebf;strokeColor=#6c8ebf;fontStyle=1;fontColor=#FFFFFF;align=center;" vertex="1" parent="emails">
           <mxGeometry width="280" height="30" as="geometry" />
@@ -287,7 +296,7 @@
         <mxCell id="emails_r3c1" value="threat_type" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;" vertex="1" parent="emails_r3">
           <mxGeometry width="140" height="30" as="geometry" />
         </mxCell>
-        <mxCell id="emails_r3c2" value="ENUM" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;" vertex="1" parent="emails_r3">
+        <mxCell id="emails_r3c2" value="threat_type_enum" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;" vertex="1" parent="emails_r3">
           <mxGeometry x="140" width="140" height="30" as="geometry" />
         </mxCell>
         <mxCell id="emails_r4" value="" style="shape=tableRow;horizontal=0;startSize=0;swimlaneHead=0;swimlaneBody=0;fillColor=none;strokeColor=inherit;" vertex="1" parent="emails">
@@ -296,42 +305,51 @@
         <mxCell id="emails_r4c1" value="severity" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;" vertex="1" parent="emails_r4">
           <mxGeometry width="140" height="30" as="geometry" />
         </mxCell>
-        <mxCell id="emails_r4c2" value="ENUM" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;" vertex="1" parent="emails_r4">
+        <mxCell id="emails_r4c2" value="severity_enum" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;" vertex="1" parent="emails_r4">
           <mxGeometry x="140" width="140" height="30" as="geometry" />
         </mxCell>
         <mxCell id="emails_r5" value="" style="shape=tableRow;horizontal=0;startSize=0;swimlaneHead=0;swimlaneBody=0;fillColor=none;strokeColor=inherit;" vertex="1" parent="emails">
           <mxGeometry y="150" width="280" height="30" as="geometry" />
         </mxCell>
-        <mxCell id="emails_r5c1" value="impersonates" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;" vertex="1" parent="emails_r5">
+        <mxCell id="emails_r5c1" value="source" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;" vertex="1" parent="emails_r5">
           <mxGeometry width="140" height="30" as="geometry" />
         </mxCell>
-        <mxCell id="emails_r5c2" value="VARCHAR(50)" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;" vertex="1" parent="emails_r5">
+        <mxCell id="emails_r5c2" value="source_enum" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;" vertex="1" parent="emails_r5">
           <mxGeometry x="140" width="140" height="30" as="geometry" />
         </mxCell>
         <mxCell id="emails_r6" value="" style="shape=tableRow;horizontal=0;startSize=0;swimlaneHead=0;swimlaneBody=0;fillColor=none;strokeColor=inherit;" vertex="1" parent="emails">
           <mxGeometry y="180" width="280" height="30" as="geometry" />
         </mxCell>
-        <mxCell id="emails_r6c1" value="source" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;" vertex="1" parent="emails_r6">
+        <mxCell id="emails_r6c1" value="first_seen / last_seen" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;" vertex="1" parent="emails_r6">
           <mxGeometry width="140" height="30" as="geometry" />
         </mxCell>
-        <mxCell id="emails_r6c2" value="ENUM" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;" vertex="1" parent="emails_r6">
+        <mxCell id="emails_r6c2" value="TIMESTAMP" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;" vertex="1" parent="emails_r6">
           <mxGeometry x="140" width="140" height="30" as="geometry" />
         </mxCell>
         <mxCell id="emails_r7" value="" style="shape=tableRow;horizontal=0;startSize=0;swimlaneHead=0;swimlaneBody=0;fillColor=none;strokeColor=inherit;" vertex="1" parent="emails">
           <mxGeometry y="210" width="280" height="30" as="geometry" />
         </mxCell>
-        <mxCell id="emails_r7c1" value="flags" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;" vertex="1" parent="emails_r7">
+        <mxCell id="emails_r7c1" value="hit_count" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;" vertex="1" parent="emails_r7">
           <mxGeometry width="140" height="30" as="geometry" />
         </mxCell>
-        <mxCell id="emails_r7c2" value="SMALLINT" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;" vertex="1" parent="emails_r7">
+        <mxCell id="emails_r7c2" value="INTEGER" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;" vertex="1" parent="emails_r7">
+          <mxGeometry x="140" width="140" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="emails_r8" value="" style="shape=tableRow;horizontal=0;startSize=0;swimlaneHead=0;swimlaneBody=0;fillColor=none;strokeColor=inherit;" vertex="1" parent="emails">
+          <mxGeometry y="240" width="280" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="emails_r8c1" value="flags" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;" vertex="1" parent="emails_r8">
+          <mxGeometry width="140" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="emails_r8c2" value="SMALLINT" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;" vertex="1" parent="emails_r8">
           <mxGeometry x="140" width="140" height="30" as="geometry" />
         </mxCell>
 
-        <!-- TABLA: threat_phones -->
+        <!-- TABLA: threat_phones (NUEVA) -->
         <mxCell id="phones" value="" style="shape=table;startSize=30;container=1;collapsible=0;childLayout=tableLayout;fixedRows=1;rowLines=1;fontStyle=1;align=center;resizeLast=1;fillColor=#e1d5e7;strokeColor=#9673a6;" vertex="1" parent="1">
-          <mxGeometry x="720" y="360" width="280" height="240" as="geometry" />
+          <mxGeometry x="1060" y="80" width="280" height="300" as="geometry" />
         </mxCell>
-        <mxCell id="phones_header" value="threat_phones" style="shape=tableRow;horizontal=0;startSize=0;swimlaneHead=0;swimlaneBody=0;fillColor=#9673a6;strokeColor=#9673a6;fontStyle=1;fontColor=#FFFFFF;align=center;" vertex="1" parent="phones">
+        <mxCell id="phones_header" value="threat_phones (NUEVO)" style="shape=tableRow;horizontal=0;startSize=0;swimlaneHead=0;swimlaneBody=0;fillColor=#9673a6;strokeColor=#9673a6;fontStyle=1;fontColor=#FFFFFF;align=center;" vertex="1" parent="phones">
           <mxGeometry width="280" height="30" as="geometry" />
         </mxCell>
         <mxCell id="phones_h1" value="Campo" style="shape=partialRectangle;connectable=0;fillColor=#9673a6;top=0;left=0;bottom=0;right=0;fontStyle=1;fontColor=#FFFFFF;" vertex="1" parent="phones_header">
@@ -364,7 +382,7 @@
         <mxCell id="phones_r3c1" value="threat_type" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;" vertex="1" parent="phones_r3">
           <mxGeometry width="140" height="30" as="geometry" />
         </mxCell>
-        <mxCell id="phones_r3c2" value="ENUM" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;" vertex="1" parent="phones_r3">
+        <mxCell id="phones_r3c2" value="threat_type_enum" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;" vertex="1" parent="phones_r3">
           <mxGeometry x="140" width="140" height="30" as="geometry" />
         </mxCell>
         <mxCell id="phones_r4" value="" style="shape=tableRow;horizontal=0;startSize=0;swimlaneHead=0;swimlaneBody=0;fillColor=none;strokeColor=inherit;" vertex="1" parent="phones">
@@ -373,7 +391,7 @@
         <mxCell id="phones_r4c1" value="severity" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;" vertex="1" parent="phones_r4">
           <mxGeometry width="140" height="30" as="geometry" />
         </mxCell>
-        <mxCell id="phones_r4c2" value="ENUM" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;" vertex="1" parent="phones_r4">
+        <mxCell id="phones_r4c2" value="severity_enum" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;" vertex="1" parent="phones_r4">
           <mxGeometry x="140" width="140" height="30" as="geometry" />
         </mxCell>
         <mxCell id="phones_r5" value="" style="shape=tableRow;horizontal=0;startSize=0;swimlaneHead=0;swimlaneBody=0;fillColor=none;strokeColor=inherit;" vertex="1" parent="phones">
@@ -382,7 +400,7 @@
         <mxCell id="phones_r5c1" value="description" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;" vertex="1" parent="phones_r5">
           <mxGeometry width="140" height="30" as="geometry" />
         </mxCell>
-        <mxCell id="phones_r5c2" value="VARCHAR(200)" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;" vertex="1" parent="phones_r5">
+        <mxCell id="phones_r5c2" value="TEXT" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;" vertex="1" parent="phones_r5">
           <mxGeometry x="140" width="140" height="30" as="geometry" />
         </mxCell>
         <mxCell id="phones_r6" value="" style="shape=tableRow;horizontal=0;startSize=0;swimlaneHead=0;swimlaneBody=0;fillColor=none;strokeColor=inherit;" vertex="1" parent="phones">
@@ -391,81 +409,40 @@
         <mxCell id="phones_r6c1" value="source" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;" vertex="1" parent="phones_r6">
           <mxGeometry width="140" height="30" as="geometry" />
         </mxCell>
-        <mxCell id="phones_r6c2" value="ENUM" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;" vertex="1" parent="phones_r6">
+        <mxCell id="phones_r6c2" value="source_enum" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;" vertex="1" parent="phones_r6">
           <mxGeometry x="140" width="140" height="30" as="geometry" />
         </mxCell>
         <mxCell id="phones_r7" value="" style="shape=tableRow;horizontal=0;startSize=0;swimlaneHead=0;swimlaneBody=0;fillColor=none;strokeColor=inherit;" vertex="1" parent="phones">
           <mxGeometry y="210" width="280" height="30" as="geometry" />
         </mxCell>
-        <mxCell id="phones_r7c1" value="flags" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;" vertex="1" parent="phones_r7">
+        <mxCell id="phones_r7c1" value="first_seen / last_seen" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;" vertex="1" parent="phones_r7">
           <mxGeometry width="140" height="30" as="geometry" />
         </mxCell>
-        <mxCell id="phones_r7c2" value="SMALLINT" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;" vertex="1" parent="phones_r7">
+        <mxCell id="phones_r7c2" value="TIMESTAMP" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;" vertex="1" parent="phones_r7">
           <mxGeometry x="140" width="140" height="30" as="geometry" />
         </mxCell>
-
-        <!-- TABLA: analysis_cache -->
-        <mxCell id="cache" value="" style="shape=table;startSize=30;container=1;collapsible=0;childLayout=tableLayout;fixedRows=1;rowLines=1;fontStyle=1;align=center;resizeLast=1;fillColor=#fff2cc;strokeColor=#d6b656;" vertex="1" parent="1">
-          <mxGeometry x="380" y="330" width="280" height="180" as="geometry" />
+        <mxCell id="phones_r8" value="" style="shape=tableRow;horizontal=0;startSize=0;swimlaneHead=0;swimlaneBody=0;fillColor=none;strokeColor=inherit;" vertex="1" parent="phones">
+          <mxGeometry y="240" width="280" height="30" as="geometry" />
         </mxCell>
-        <mxCell id="cache_header" value="analysis_cache" style="shape=tableRow;horizontal=0;startSize=0;swimlaneHead=0;swimlaneBody=0;fillColor=#d6b656;strokeColor=#d6b656;fontStyle=1;fontColor=#FFFFFF;align=center;" vertex="1" parent="cache">
-          <mxGeometry width="280" height="30" as="geometry" />
-        </mxCell>
-        <mxCell id="cache_h1" value="Campo" style="shape=partialRectangle;connectable=0;fillColor=#d6b656;top=0;left=0;bottom=0;right=0;fontStyle=1;fontColor=#FFFFFF;" vertex="1" parent="cache_header">
+        <mxCell id="phones_r8c1" value="hit_count" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;" vertex="1" parent="phones_r8">
           <mxGeometry width="140" height="30" as="geometry" />
         </mxCell>
-        <mxCell id="cache_h2" value="Tipo" style="shape=partialRectangle;connectable=0;fillColor=#d6b656;top=0;left=0;bottom=0;right=0;fontStyle=1;fontColor=#FFFFFF;" vertex="1" parent="cache_header">
+        <mxCell id="phones_r8c2" value="INTEGER" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;" vertex="1" parent="phones_r8">
           <mxGeometry x="140" width="140" height="30" as="geometry" />
         </mxCell>
-        <mxCell id="cache_r1" value="" style="shape=tableRow;horizontal=0;startSize=0;swimlaneHead=0;swimlaneBody=0;fillColor=none;strokeColor=inherit;" vertex="1" parent="cache">
-          <mxGeometry y="30" width="280" height="30" as="geometry" />
+        <mxCell id="phones_r9" value="" style="shape=tableRow;horizontal=0;startSize=0;swimlaneHead=0;swimlaneBody=0;fillColor=none;strokeColor=inherit;" vertex="1" parent="phones">
+          <mxGeometry y="270" width="280" height="30" as="geometry" />
         </mxCell>
-        <mxCell id="cache_r1c1" value="input_hash (PK)" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;fontStyle=1;" vertex="1" parent="cache_r1">
+        <mxCell id="phones_r9c1" value="flags" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;" vertex="1" parent="phones_r9">
           <mxGeometry width="140" height="30" as="geometry" />
         </mxCell>
-        <mxCell id="cache_r1c2" value="BYTEA" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;" vertex="1" parent="cache_r1">
-          <mxGeometry x="140" width="140" height="30" as="geometry" />
-        </mxCell>
-        <mxCell id="cache_r2" value="" style="shape=tableRow;horizontal=0;startSize=0;swimlaneHead=0;swimlaneBody=0;fillColor=none;strokeColor=inherit;" vertex="1" parent="cache">
-          <mxGeometry y="60" width="280" height="30" as="geometry" />
-        </mxCell>
-        <mxCell id="cache_r2c1" value="input_type" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;" vertex="1" parent="cache_r2">
-          <mxGeometry width="140" height="30" as="geometry" />
-        </mxCell>
-        <mxCell id="cache_r2c2" value="ENUM" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;" vertex="1" parent="cache_r2">
-          <mxGeometry x="140" width="140" height="30" as="geometry" />
-        </mxCell>
-        <mxCell id="cache_r3" value="" style="shape=tableRow;horizontal=0;startSize=0;swimlaneHead=0;swimlaneBody=0;fillColor=none;strokeColor=inherit;" vertex="1" parent="cache">
-          <mxGeometry y="90" width="280" height="30" as="geometry" />
-        </mxCell>
-        <mxCell id="cache_r3c1" value="risk_score" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;" vertex="1" parent="cache_r3">
-          <mxGeometry width="140" height="30" as="geometry" />
-        </mxCell>
-        <mxCell id="cache_r3c2" value="SMALLINT" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;" vertex="1" parent="cache_r3">
-          <mxGeometry x="140" width="140" height="30" as="geometry" />
-        </mxCell>
-        <mxCell id="cache_r4" value="" style="shape=tableRow;horizontal=0;startSize=0;swimlaneHead=0;swimlaneBody=0;fillColor=none;strokeColor=inherit;" vertex="1" parent="cache">
-          <mxGeometry y="120" width="280" height="30" as="geometry" />
-        </mxCell>
-        <mxCell id="cache_r4c1" value="response" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;" vertex="1" parent="cache_r4">
-          <mxGeometry width="140" height="30" as="geometry" />
-        </mxCell>
-        <mxCell id="cache_r4c2" value="BYTEA (compressed)" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;" vertex="1" parent="cache_r4">
-          <mxGeometry x="140" width="140" height="30" as="geometry" />
-        </mxCell>
-        <mxCell id="cache_r5" value="" style="shape=tableRow;horizontal=0;startSize=0;swimlaneHead=0;swimlaneBody=0;fillColor=none;strokeColor=inherit;" vertex="1" parent="cache">
-          <mxGeometry y="150" width="280" height="30" as="geometry" />
-        </mxCell>
-        <mxCell id="cache_r5c1" value="expires_at" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;" vertex="1" parent="cache_r5">
-          <mxGeometry width="140" height="30" as="geometry" />
-        </mxCell>
-        <mxCell id="cache_r5c2" value="TIMESTAMP" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;" vertex="1" parent="cache_r5">
+        <mxCell id="phones_r9c2" value="SMALLINT" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;" vertex="1" parent="phones_r9">
           <mxGeometry x="140" width="140" height="30" as="geometry" />
         </mxCell>
 
         <!-- TABLA: sync_status -->
         <mxCell id="sync" value="" style="shape=table;startSize=30;container=1;collapsible=0;childLayout=tableLayout;fixedRows=1;rowLines=1;fontStyle=1;align=center;resizeLast=1;fillColor=#f5f5f5;strokeColor=#666666;" vertex="1" parent="1">
-          <mxGeometry x="380" y="550" width="280" height="150" as="geometry" />
+          <mxGeometry x="380" y="340" width="280" height="150" as="geometry" />
         </mxCell>
         <mxCell id="sync_header" value="sync_status" style="shape=tableRow;horizontal=0;startSize=0;swimlaneHead=0;swimlaneBody=0;fillColor=#666666;strokeColor=#666666;fontStyle=1;fontColor=#FFFFFF;align=center;" vertex="1" parent="sync">
           <mxGeometry width="280" height="30" as="geometry" />
@@ -482,7 +459,7 @@
         <mxCell id="sync_r1c1" value="source (PK)" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;fontStyle=1;" vertex="1" parent="sync_r1">
           <mxGeometry width="140" height="30" as="geometry" />
         </mxCell>
-        <mxCell id="sync_r1c2" value="ENUM" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;" vertex="1" parent="sync_r1">
+        <mxCell id="sync_r1c2" value="source_enum" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;" vertex="1" parent="sync_r1">
           <mxGeometry x="140" width="140" height="30" as="geometry" />
         </mxCell>
         <mxCell id="sync_r2" value="" style="shape=tableRow;horizontal=0;startSize=0;swimlaneHead=0;swimlaneBody=0;fillColor=none;strokeColor=inherit;" vertex="1" parent="sync">
@@ -517,25 +494,32 @@
         <mxCell id="rel1" value="" style="edgeStyle=entityRelationEdgeStyle;endArrow=ERone;startArrow=ERmany;endFill=1;startFill=1;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" edge="1" parent="1" source="domains" target="paths">
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
-        <mxCell id="rel2" value="" style="edgeStyle=entityRelationEdgeStyle;endArrow=ERone;startArrow=ERzeroToMany;endFill=1;startFill=0;exitX=0;exitY=0.5;exitDx=0;exitDy=0;entryX=1;entryY=0.5;entryDx=0;entryDy=0;dashed=1;" edge="1" parent="1" source="domains" target="whitelist">
-          <mxGeometry relative="1" as="geometry">
-            <mxPoint x="320" y="230" as="sourcePoint" />
-            <mxPoint x="660" y="185" as="targetPoint" />
-            <Array as="points">
-              <mxPoint x="340" y="230" />
-              <mxPoint x="340" y="185" />
-            </Array>
-          </mxGeometry>
-        </mxCell>
-
-        <!-- Nota: impersonates -->
-        <mxCell id="note1" value="impersonates_hash&#xa;referencia a whitelist_domains&#xa;(typosquatting)" style="shape=note;whiteSpace=wrap;html=1;size=14;verticalAlign=top;align=left;spacingTop=-6;fillColor=#ffffcc;strokeColor=#999999;fontSize=10;" vertex="1" parent="1">
-          <mxGeometry x="1060" y="80" width="150" height="60" as="geometry" />
-        </mxCell>
 
         <!-- Nota: ENUMs -->
-        <mxCell id="note2" value="ENUMs:&#xa;- threat_type: phishing, malware, scam...&#xa;- severity: low, medium, high, critical&#xa;- source: urlhaus, phishtank, manual..." style="shape=note;whiteSpace=wrap;html=1;size=14;verticalAlign=top;align=left;spacingTop=-6;fillColor=#ffffcc;strokeColor=#999999;fontSize=10;" vertex="1" parent="1">
-          <mxGeometry x="1060" y="160" width="200" height="80" as="geometry" />
+        <mxCell id="note_enums" value="ENUMS:" style="text;html=1;align=left;verticalAlign=top;spacingTop=-2;fillColor=#ffffcc;strokeColor=#999999;fontSize=11;fontStyle=1;rounded=1;" vertex="1" parent="1">
+          <mxGeometry x="720" y="400" width="280" height="25" as="geometry" />
+        </mxCell>
+        <mxCell id="note_threat_type" value="threat_type_enum:&#xa;phishing, malware, scam, spam,&#xa;fraud, suspicious" style="text;html=1;align=left;verticalAlign=top;spacingTop=0;fillColor=#ffffcc;strokeColor=#999999;fontSize=10;rounded=1;" vertex="1" parent="1">
+          <mxGeometry x="720" y="430" width="180" height="55" as="geometry" />
+        </mxCell>
+        <mxCell id="note_severity" value="severity_enum:&#xa;low, medium, high, critical" style="text;html=1;align=left;verticalAlign=top;spacingTop=0;fillColor=#ffffcc;strokeColor=#999999;fontSize=10;rounded=1;" vertex="1" parent="1">
+          <mxGeometry x="720" y="495" width="180" height="45" as="geometry" />
+        </mxCell>
+        <mxCell id="note_source" value="source_enum:&#xa;urlhaus, phishtank, openphish,&#xa;stopforumspam, listahu, manual" style="text;html=1;align=left;verticalAlign=top;spacingTop=0;fillColor=#ffffcc;strokeColor=#999999;fontSize=10;rounded=1;" vertex="1" parent="1">
+          <mxGeometry x="720" y="550" width="200" height="55" as="geometry" />
+        </mxCell>
+
+        <!-- Nota: Fuentes de datos -->
+        <mxCell id="note_sources" value="Fuentes de Datos:" style="text;html=1;align=left;verticalAlign=top;spacingTop=-2;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=11;fontStyle=1;rounded=1;" vertex="1" parent="1">
+          <mxGeometry x="1060" y="400" width="280" height="25" as="geometry" />
+        </mxCell>
+        <mxCell id="note_src1" value="URLhaus - Malware URLs&#xa;OpenPhish - Phishing domains&#xa;StopForumSpam - Spam emails&#xa;Lista Hu - Scam phones (ES/LATAM)" style="text;html=1;align=left;verticalAlign=top;spacingTop=0;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=10;rounded=1;" vertex="1" parent="1">
+          <mxGeometry x="1060" y="430" width="220" height="70" as="geometry" />
+        </mxCell>
+
+        <!-- Nota: Indices -->
+        <mxCell id="note_idx" value="Indices principales:&#xa;- domain_hash (PK)&#xa;- email_hash (PK)&#xa;- phone_national (PK)&#xa;- path_hash (PK)&#xa;- source + last_seen" style="text;html=1;align=left;verticalAlign=top;spacingTop=0;fillColor=#f5f5f5;strokeColor=#666666;fontSize=10;rounded=1;" vertex="1" parent="1">
+          <mxGeometry x="380" y="520" width="180" height="100" as="geometry" />
         </mxCell>
 
       </root>
