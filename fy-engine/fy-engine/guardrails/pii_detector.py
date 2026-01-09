@@ -76,7 +76,8 @@ class PIIDetector:
                 "PERSON",
                 "CREDIT_CARD",
                 "IBAN_CODE",
-                "LOCATION",
+                # NOTA: LOCATION excluido porque genera muchos falsos positivos
+                # y no es información crítica para un chat anti-fraude
                 # Custom españoles
                 "ES_DNI",
                 "ES_NIE",

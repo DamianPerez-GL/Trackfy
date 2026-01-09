@@ -7,11 +7,17 @@ import (
 )
 
 type Config struct {
-	Server   ServerConfig
-	Database DatabaseConfig
-	Redis    RedisConfig
-	JWT      JWTConfig
-	FyEngine FyEngineConfig
+	Server     ServerConfig
+	Database   DatabaseConfig
+	Redis      RedisConfig
+	JWT        JWTConfig
+	FyEngine   FyEngineConfig
+	FyAnalysis FyAnalysisConfig
+}
+
+type FyAnalysisConfig struct {
+	URL     string
+	Timeout time.Duration
 }
 
 type ServerConfig struct {
@@ -66,6 +72,10 @@ func Load() *Config {
 		FyEngine: FyEngineConfig{
 			URL:     getEnv("FY_ENGINE_URL", "http://fy-engine:8082"),
 			Timeout: getDurationEnv("FY_ENGINE_TIMEOUT", 30*time.Second),
+		},
+		FyAnalysis: FyAnalysisConfig{
+			URL:     getEnv("FY_ANALYSIS_URL", "http://fy-analysis:9090"),
+			Timeout: getDurationEnv("FY_ANALYSIS_TIMEOUT", 30*time.Second),
 		},
 	}
 }

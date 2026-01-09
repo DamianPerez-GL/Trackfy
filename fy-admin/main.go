@@ -100,6 +100,8 @@ func main() {
 	mux.HandleFunc("/api/data/emails", server.handleListEmails)
 	mux.HandleFunc("/api/data/phones", server.handleListPhones)
 	mux.HandleFunc("/api/data/whitelist", server.handleListWhitelist)
+	mux.HandleFunc("/api/data/reports", server.handleListReports)
+	mux.HandleFunc("/api/data/reports/stats", server.handleReportsStats)
 
 	// Manual entry endpoints
 	mux.HandleFunc("/api/add/phone", server.handleAddPhone)
@@ -1182,6 +1184,25 @@ func (s *Server) syncOpenPhish(ctx context.Context) {
 	`, records)
 }
 
+// cleanEmail limpia un email de caracteres no deseados
+func cleanEmail(email string) string {
+	// Quitar comillas simples y dobles
+	email = strings.Trim(email, "\"'`")
+
+	// Quitar espacios al inicio y final
+	email = strings.TrimSpace(email)
+
+	// Quitar caracteres de control y no imprimibles
+	var cleaned strings.Builder
+	for _, r := range email {
+		if r >= 32 && r < 127 { // Solo ASCII imprimible
+			cleaned.WriteRune(r)
+		}
+	}
+
+	return cleaned.String()
+}
+
 // syncStopForumSpam descarga e importa emails de spam
 func (s *Server) syncStopForumSpam(ctx context.Context) {
 	source := "emails"
@@ -1251,12 +1272,22 @@ func (s *Server) syncStopForumSpam(ctx context.Context) {
 		}
 
 		email := strings.ToLower(strings.TrimSpace(parts[0]))
+
+		// Limpiar el email de caracteres no deseados
+		email = cleanEmail(email)
+
 		if email == "" || !strings.Contains(email, "@") {
 			continue
 		}
 
 		// Validar formato básico de email
 		if len(email) < 5 || len(email) > 254 {
+			continue
+		}
+
+		// Verificar que no contenga datos corruptos
+		if strings.Contains(email, "%") || strings.Contains(email, "spinfile") ||
+			strings.Contains(email, " ") || strings.Contains(email, "\t") {
 			continue
 		}
 
@@ -1269,6 +1300,12 @@ func (s *Server) syncStopForumSpam(ctx context.Context) {
 			continue
 		}
 		domain := email[atIndex+1:]
+
+		// Validar que el dominio tenga al menos un punto
+		if !strings.Contains(domain, ".") {
+			errors++
+			continue
+		}
 
 		// Calcular confianza basado en el count si está disponible
 		confidence := int16(70)
@@ -1514,6 +1551,199 @@ func (s *Server) updateSyncStatusComplete(source string, records, errors int64, 
 		status.Errors = errors
 		status.Message = message
 	}
+}
+
+// handleListReports lista los reportes de usuarios
+func (s *Server) handleListReports(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+
+	if s.db == nil {
+		json.NewEncoder(w).Encode(map[string]string{"error": "Database not connected"})
+		return
+	}
+
+	limit := getQueryInt(r, "limit", 50)
+	offset := getQueryInt(r, "offset", 0)
+	search := r.URL.Query().Get("search")
+	status := r.URL.Query().Get("status")
+
+	query := `
+		SELECT ru.url, ru.domain, ru.primary_threat_type::text, ru.aggregated_score,
+		       ru.total_reports, ru.unique_reporters, ru.status::text,
+		       ru.first_reported_at, ru.last_reported_at, ru.promoted_to_threats
+		FROM reported_urls ru
+		WHERE (ru.flags & 1) = 1
+	`
+	args := []interface{}{}
+	argCount := 0
+
+	if search != "" {
+		argCount++
+		query += fmt.Sprintf(" AND (ru.url ILIKE $%d OR ru.domain ILIKE $%d)", argCount, argCount)
+		args = append(args, "%"+search+"%")
+	}
+	if status != "" {
+		argCount++
+		query += fmt.Sprintf(" AND ru.status::text = $%d", argCount)
+		args = append(args, status)
+	}
+
+	query += " ORDER BY ru.last_reported_at DESC"
+	query += fmt.Sprintf(" LIMIT %d OFFSET %d", limit, offset)
+
+	rows, err := s.db.Query(query, args...)
+	if err != nil {
+		json.NewEncoder(w).Encode(map[string]string{"error": err.Error()})
+		return
+	}
+	defer rows.Close()
+
+	reports := []map[string]interface{}{}
+	for rows.Next() {
+		var urlStr, domain, status string
+		var threatType sql.NullString
+		var score, totalReports, uniqueReporters int
+		var firstReported, lastReported time.Time
+		var promoted bool
+
+		if rows.Scan(&urlStr, &domain, &threatType, &score, &totalReports, &uniqueReporters,
+			&status, &firstReported, &lastReported, &promoted) == nil {
+			item := map[string]interface{}{
+				"url":              urlStr,
+				"domain":           domain,
+				"aggregated_score": score,
+				"total_reports":    totalReports,
+				"unique_reporters": uniqueReporters,
+				"status":           status,
+				"first_reported":   firstReported.Format(time.RFC3339),
+				"last_reported":    lastReported.Format(time.RFC3339),
+				"promoted":         promoted,
+			}
+			if threatType.Valid {
+				item["threat_type"] = threatType.String
+			}
+			reports = append(reports, item)
+		}
+	}
+
+	// Get total count with same filters
+	countQuery := `SELECT COUNT(*) FROM reported_urls WHERE (flags & 1) = 1`
+	countArgs := []interface{}{}
+	argCount = 0
+	if search != "" {
+		argCount++
+		countQuery += fmt.Sprintf(" AND (url ILIKE $%d OR domain ILIKE $%d)", argCount, argCount)
+		countArgs = append(countArgs, "%"+search+"%")
+	}
+	if status != "" {
+		argCount++
+		countQuery += fmt.Sprintf(" AND status::text = $%d", argCount)
+		countArgs = append(countArgs, status)
+	}
+
+	var total int64
+	s.db.QueryRow(countQuery, countArgs...).Scan(&total)
+
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"data":   reports,
+		"total":  total,
+		"limit":  limit,
+		"offset": offset,
+	})
+}
+
+// handleReportsStats devuelve estadísticas de los reportes
+func (s *Server) handleReportsStats(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+
+	if s.db == nil {
+		json.NewEncoder(w).Encode(map[string]string{"error": "Database not connected"})
+		return
+	}
+
+	stats := make(map[string]interface{})
+
+	// Estadísticas generales de reported_urls
+	var total, pending, confirmed, rejected, highScore, promoted int64
+	s.db.QueryRow(`
+		SELECT
+			COUNT(*),
+			COUNT(*) FILTER (WHERE status = 'pending'),
+			COUNT(*) FILTER (WHERE status = 'confirmed'),
+			COUNT(*) FILTER (WHERE status = 'rejected'),
+			COUNT(*) FILTER (WHERE aggregated_score >= 70),
+			COUNT(*) FILTER (WHERE promoted_to_threats = true)
+		FROM reported_urls WHERE (flags & 1) = 1
+	`).Scan(&total, &pending, &confirmed, &rejected, &highScore, &promoted)
+
+	stats["total_reported_urls"] = total
+	stats["pending"] = pending
+	stats["confirmed"] = confirmed
+	stats["rejected"] = rejected
+	stats["high_score"] = highScore
+	stats["promoted"] = promoted
+
+	// Total de reportes individuales
+	var totalIndividual int64
+	s.db.QueryRow(`SELECT COUNT(*) FROM user_url_reports`).Scan(&totalIndividual)
+	stats["total_individual_reports"] = totalIndividual
+
+	// Reportes por tipo de amenaza
+	byThreat := []map[string]interface{}{}
+	rows, err := s.db.Query(`
+		SELECT primary_threat_type::text, COUNT(*) as count
+		FROM reported_urls
+		WHERE (flags & 1) = 1 AND primary_threat_type IS NOT NULL
+		GROUP BY primary_threat_type
+		ORDER BY count DESC
+	`)
+	if err == nil {
+		defer rows.Close()
+		for rows.Next() {
+			var threatType string
+			var count int64
+			if rows.Scan(&threatType, &count) == nil {
+				byThreat = append(byThreat, map[string]interface{}{
+					"type":  threatType,
+					"count": count,
+				})
+			}
+		}
+	}
+	stats["by_threat_type"] = byThreat
+
+	// Top reportadores (usuarios con más reportes)
+	topReporters := []map[string]interface{}{}
+	rows2, err := s.db.Query(`
+		SELECT user_id, trust_score, total_reports, confirmed_reports
+		FROM user_trust_scores
+		WHERE total_reports > 0
+		ORDER BY total_reports DESC
+		LIMIT 10
+	`)
+	if err == nil {
+		defer rows2.Close()
+		for rows2.Next() {
+			var userID string
+			var trustScore, totalReports, confirmedReports int
+			if rows2.Scan(&userID, &trustScore, &totalReports, &confirmedReports) == nil {
+				// Anonimizar user_id parcialmente
+				anonID := userID
+				if len(userID) > 8 {
+					anonID = userID[:4] + "..." + userID[len(userID)-4:]
+				}
+				topReporters = append(topReporters, map[string]interface{}{
+					"user_id":           anonID,
+					"trust_score":       trustScore,
+					"total_reports":     totalReports,
+					"confirmed_reports": confirmedReports,
+				})
+			}
+		}
+	}
+	stats["top_reporters"] = topReporters
+
+	json.NewEncoder(w).Encode(stats)
 }
 
 func extractTLD(domain string) string {

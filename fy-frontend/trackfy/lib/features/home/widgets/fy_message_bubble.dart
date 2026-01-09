@@ -166,6 +166,13 @@ class FyMessageBubble extends StatelessWidget {
                       ),
                     ],
                   ),
+                ]
+                // Botón de reportar solo (sin danger)
+                else if (onReport != null) ...[
+                  const SizedBox(height: 10),
+                  _ReportActionButton(
+                    onTap: onReport,
+                  ),
                 ],
                 const SizedBox(height: 4),
                 Padding(
@@ -247,6 +254,67 @@ class _DangerActionButtonState extends State<_DangerActionButton> {
                 fontSize: 12,
                 fontWeight: FontWeight.w500,
                 color: widget.isPrimary ? Colors.white : AppColors.danger,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Botón de reportar para mensajes normales (estilo verde/seguro)
+class _ReportActionButton extends StatefulWidget {
+  final VoidCallback? onTap;
+
+  const _ReportActionButton({
+    this.onTap,
+  });
+
+  @override
+  State<_ReportActionButton> createState() => _ReportActionButtonState();
+}
+
+class _ReportActionButtonState extends State<_ReportActionButton> {
+  bool _isPressed = false;
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTapDown: (_) => setState(() => _isPressed = true),
+      onTapUp: (_) {
+        setState(() => _isPressed = false);
+        widget.onTap?.call();
+      },
+      onTapCancel: () => setState(() => _isPressed = false),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 150),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+        decoration: BoxDecoration(
+          color: _isPressed
+              ? AppColors.primaryGreen.withValues(alpha: 0.2)
+              : AppColors.primaryGreen.withValues(alpha: 0.1),
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(
+            color: AppColors.primaryGreen.withValues(alpha: 0.5),
+            width: 1,
+          ),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              Icons.flag_outlined,
+              size: 16,
+              color: AppColors.primaryGreen,
+            ),
+            const SizedBox(width: 8),
+            Text(
+              'Reportar estafa',
+              style: AppTypography.caption.copyWith(
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
+                color: AppColors.primaryGreen,
               ),
             ),
           ],

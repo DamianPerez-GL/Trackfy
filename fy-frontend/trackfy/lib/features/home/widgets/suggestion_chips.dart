@@ -27,7 +27,7 @@ class SuggestionChips extends StatelessWidget {
     Suggestion(icon: Icons.link_rounded, text: 'Verificar enlace'),
     Suggestion(icon: Icons.sms_outlined, text: 'Analizar SMS'),
     Suggestion(icon: Icons.warning_amber_rounded, text: 'Me han estafado'),
-    Suggestion(icon: Icons.help_outline_rounded, text: '¿Cómo funciona?'),
+    Suggestion(icon: Icons.flag_outlined, text: 'Reportar estafa'),
   ];
 
   @override

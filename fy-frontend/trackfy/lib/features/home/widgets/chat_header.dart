@@ -13,12 +13,14 @@ enum FyMoodHeader {
 /// Header del chat con branding Trackfy premium
 class ChatHeader extends StatefulWidget {
   final VoidCallback? onNewChat;
+  final VoidCallback? onHistory;
   final VoidCallback? onMenu;
   final FyMoodHeader mood;
 
   const ChatHeader({
     super.key,
     this.onNewChat,
+    this.onHistory,
     this.onMenu,
     this.mood = FyMoodHeader.neutral,
   });
@@ -79,6 +81,11 @@ class _ChatHeaderState extends State<ChatHeader>
               _buildBrandSection(),
               const Spacer(),
               // Botones de acción - solo iconos con gradiente
+              _HeaderIconButton(
+                icon: Icons.history_rounded,
+                onTap: widget.onHistory,
+              ),
+              const SizedBox(width: 16),
               _HeaderIconButton(
                 icon: Icons.add_comment_outlined,
                 onTap: widget.onNewChat,

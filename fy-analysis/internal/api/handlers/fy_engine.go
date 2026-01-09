@@ -28,6 +28,10 @@ type FyEngineResponse struct {
 	RiskScore int      `json:"risk_score"`
 	Verdict   string   `json:"verdict"`
 	Reasons   []string `json:"reasons"`
+	// Campos adicionales para trazabilidad
+	FoundInDB bool   `json:"found_in_db"` // Si se encontró en la DB local
+	Source    string `json:"source"`      // Fuente principal que lo detectó
+	LatencyMs int64  `json:"latency_ms"`  // Tiempo de análisis en ms
 }
 
 // URLRequest petición de análisis de URL
@@ -56,12 +60,32 @@ func convertToFyEngineResponse(result *urlengine.AnalysisResponse, inputType str
 		verdict = "dangerous"
 	}
 
+	// Extraer info de trazabilidad de las fuentes
+	foundInDB := false
+	mainSource := ""
+	for _, src := range result.Sources {
+		if src.Found {
+			if mainSource == "" {
+				mainSource = src.Name
+			}
+			// localdb es la DB de amenazas
+			if src.Name == "localdb" {
+				foundInDB = true
+				mainSource = "localdb"
+				break
+			}
+		}
+	}
+
 	return &FyEngineResponse{
 		Type:      inputType,
 		Content:   content,
 		RiskScore: result.RiskScore,
 		Verdict:   verdict,
 		Reasons:   result.Reasons,
+		FoundInDB: foundInDB,
+		Source:    mainSource,
+		LatencyMs: result.ResponseTimeMs,
 	}
 }
 

@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"encoding/json"
+	"net"
 	"net/http"
 
 	"github.com/trackfy/fy-analysis/internal/urlengine"
@@ -73,6 +74,10 @@ func (h *ReportsHandler) ReportURL(w http.ResponseWriter, r *http.Request) {
 	}
 	if userIP == "" {
 		userIP = r.RemoteAddr
+	}
+	// Quitar el puerto si existe (RemoteAddr viene como "ip:port")
+	if host, _, err := net.SplitHostPort(userIP); err == nil {
+		userIP = host
 	}
 	userAgent := r.Header.Get("User-Agent")
 

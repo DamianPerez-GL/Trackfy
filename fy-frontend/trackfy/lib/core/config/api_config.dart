@@ -17,6 +17,7 @@ class ApiConfig {
   /// Endpoints de la API
   static const String chatEndpoint = '/api/v1/chat';
   static const String reportEndpoint = '/api/v1/report';
+  static const String conversationsEndpoint = '/api/v1/conversations';
   static const String registerEndpoint = '/auth/register';
   static const String sendCodeEndpoint = '/auth/send-code';
   static const String verifyEndpoint = '/auth/verify';
@@ -24,6 +25,7 @@ class ApiConfig {
   /// URLs completas
   static String get chatUrl => '$baseUrl$chatEndpoint';
   static String get reportUrl => '$baseUrl$reportEndpoint';
+  static String get conversationsUrl => '$baseUrl$conversationsEndpoint';
   static String get registerUrl => '$baseUrl$registerEndpoint';
   static String get sendCodeUrl => '$baseUrl$sendCodeEndpoint';
   static String get verifyUrl => '$baseUrl$verifyEndpoint';

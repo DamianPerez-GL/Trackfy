@@ -103,15 +103,16 @@ func initURLEngine(cfg *config.Config) *urlengine.Engine {
 	log.Info().Msg("Initializing URL Engine...")
 
 	engineConfig := &urlengine.EngineConfig{
-		CheckTimeout:     3 * time.Second,
-		URLhausDBPath:    cfg.URLhausDBPath,
-		PhishTankDBPath:  cfg.PhishTankDBPath,
-		GoogleWebRiskKey: cfg.GoogleWebRiskKey,
-		URLScanKey:       cfg.URLScanKey,
-		PhishTankKey:     cfg.PhishTankKey,
-		EnableDBSync:     cfg.EnableDBSync,
-		DatabaseURL:      cfg.DatabaseURL,
-		EnableLocalDB:    cfg.EnableLocalDB,
+		CheckTimeout:      3 * time.Second,
+		URLhausDBPath:     cfg.URLhausDBPath,
+		PhishTankDBPath:   cfg.PhishTankDBPath,
+		GoogleWebRiskKey:  cfg.GoogleWebRiskKey,
+		URLScanKey:        cfg.URLScanKey,
+		PhishTankKey:      cfg.PhishTankKey,
+		EnableDBSync:      cfg.EnableDBSync,
+		DatabaseURL:       cfg.DatabaseURL,
+		EnableLocalDB:     cfg.EnableLocalDB,
+		EnableUserReports: cfg.EnableUserReports,
 	}
 
 	engine := urlengine.NewEngine(engineConfig)

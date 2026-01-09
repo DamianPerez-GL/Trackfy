@@ -46,24 +46,58 @@ PATTERNS = {
 def extract_entities(text: str) -> list[Entity]:
     """Extrae URLs, emails y teléfonos del texto"""
     entities = []
-    
+
+    # Primero extraer emails para identificar sus dominios
+    email_domains = set()
+    email_pattern = PATTERNS[EntityType.EMAIL][0]
+    for match in re.finditer(email_pattern, text, re.IGNORECASE):
+        email = match.group().strip()
+        # Extraer el dominio del email (parte después del @)
+        domain = email.split('@')[1] if '@' in email else ''
+        if domain:
+            email_domains.add(domain.lower())
+        entities.append(Entity(
+            type=EntityType.EMAIL,
+            value=email,
+            start=match.start(),
+            end=match.end()
+        ))
+
+    # Luego extraer URLs y teléfonos
     for entity_type, patterns in PATTERNS.items():
+        if entity_type == EntityType.EMAIL:
+            continue  # Ya procesados arriba
+
         for pattern in patterns:
             for match in re.finditer(pattern, text, re.IGNORECASE):
                 # Limpiar el valor
                 value = match.group().strip()
-                
+
                 # Evitar duplicados (mismo valor ya extraído)
                 if any(e.value == value for e in entities):
                     continue
-                
+
+                # Si es una URL, verificar que no sea el dominio de un email
+                if entity_type == EntityType.URL:
+                    # Extraer solo el dominio de la URL para comparar
+                    url_domain = value.lower()
+                    if url_domain.startswith('http'):
+                        # Extraer dominio de URL completa
+                        url_domain = url_domain.split('//')[1].split('/')[0] if '//' in url_domain else url_domain
+                    # Quitar www. si existe
+                    url_domain = url_domain.replace('www.', '')
+
+                    # Si el dominio es parte de un email, ignorar
+                    if url_domain in email_domains:
+                        continue
+
                 entities.append(Entity(
                     type=entity_type,
                     value=value,
                     start=match.start(),
                     end=match.end()
                 ))
-    
+
     return entities
 
 

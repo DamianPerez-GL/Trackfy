@@ -24,12 +24,25 @@ class ChatRequest(BaseModel):
     context: Optional[list[dict]] = None  # Historial previo
 
 
+class AnalysisTrace(BaseModel):
+    """Información de trazabilidad del análisis"""
+    entity_type: str | None = None        # url, email, phone
+    entity_value: str | None = None       # El valor analizado
+    risk_score: int | None = None         # 0-100
+    verdict: str | None = None            # safe, suspicious, dangerous
+    found_in_db: bool = False             # Si se encontró en la DB
+    source: str | None = None             # localdb, urlhaus, etc
+    reasons: list[str] = []               # Razones del veredicto
+    latency_ms: int | None = None         # Tiempo de análisis
+
+
 class ChatResponse(BaseModel):
     response: str
     mood: str
     pii_detected: bool
     intent: str
     analysis_performed: bool
+    trace: AnalysisTrace | None = None    # Info de trazabilidad
 
 
 # ============================================
@@ -112,19 +125,31 @@ async def chat(request: ChatRequest):
         # Por ahora solo logueamos
     
     # ─────────────────────────────────────────────
-    # 6. RESPUESTA
+    # 6. RESPUESTA con TRACE
     # ─────────────────────────────────────────────
-    
-    # Añadir nota de privacidad si se detectó PII
-    if had_pii:
-        response_text += "\n\n🔒 _Tus datos personales no han sido compartidos._"
-    
+
+    # Construir trace si hubo análisis
+    trace = None
+    if analysis_result:
+        trace = AnalysisTrace(
+            entity_type=analysis_result.get("type"),
+            entity_value=analysis_result.get("content"),
+            risk_score=analysis_result.get("risk_score"),
+            verdict=analysis_result.get("verdict"),
+            found_in_db=analysis_result.get("found_in_db", False),
+            source=analysis_result.get("source"),
+            reasons=analysis_result.get("reasons", []),
+            latency_ms=analysis_result.get("latency_ms"),
+        )
+        print(f"[Trace] {trace.entity_type}: {trace.verdict} (DB: {trace.found_in_db}, reasons: {len(trace.reasons)})")
+
     return ChatResponse(
         response=response_text,
         mood=mood,
         pii_detected=had_pii,
         intent=intent,
         analysis_performed=analysis_performed,
+        trace=trace,
     )
 
 

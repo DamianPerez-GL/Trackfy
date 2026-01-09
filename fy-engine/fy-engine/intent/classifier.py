@@ -8,6 +8,7 @@ class Intent(Enum):
     NEEDS_INFO = "needs_info"   # Menciona algo sospechoso pero NO incluye el dato
     QUESTION = "question"       # Pregunta sobre ciberseguridad
     RESCUE = "rescue"           # Emergencia, ha sido víctima
+    REPORT = "report"           # Quiere reportar una estafa
     SMALLTALK = "smalltalk"     # Saludo, charla casual
 
 
@@ -73,6 +74,15 @@ INTENT_PATTERNS = {
         ],
         "patterns": []
     },
+    Intent.REPORT: {
+        "keywords": [
+            "reportar", "reportar estafa", "quiero reportar", "denunciar",
+            "quiero denunciar", "reportar fraude", "avisar de una estafa",
+            "informar de estafa", "reportar número", "reportar enlace",
+            "reportar email", "reportar página",
+        ],
+        "patterns": []
+    },
     Intent.SMALLTALK: {
         "keywords": [
             "hola", "buenas", "hey", "qué tal", "cómo estás",
@@ -125,6 +135,14 @@ def classify_intent(text: str) -> IntentResult:
             intent=Intent.RESCUE,
             confidence=min(scores[Intent.RESCUE] / 3.0, 1.0),
             trigger_words=triggers[Intent.RESCUE]
+        )
+
+    # Report tiene alta prioridad
+    if scores[Intent.REPORT] > 0:
+        return IntentResult(
+            intent=Intent.REPORT,
+            confidence=min(scores[Intent.REPORT] / 2.0, 1.0),
+            trigger_words=triggers[Intent.REPORT]
         )
 
     # NEEDS_INFO: menciona algo sospechoso pero NO incluye URL/email/phone

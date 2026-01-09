@@ -221,12 +221,33 @@ func (p *PostgresDB) GetConversation(ctx context.Context, conversationID, userID
 	return conv, err
 }
 
+// UpdateConversationTitle actualiza el título de una conversación
+func (p *PostgresDB) UpdateConversationTitle(ctx context.Context, conversationID uuid.UUID, title string) error {
+	_, err := p.db.ExecContext(ctx, `
+		UPDATE conversations SET title = $1 WHERE id = $2
+	`, title, conversationID)
+	return err
+}
+
 func (p *PostgresDB) GetUserConversations(ctx context.Context, userID uuid.UUID, limit, offset int) ([]models.Conversation, error) {
 	rows, err := p.db.QueryContext(ctx, `
-		SELECT id, user_id, title, created_at, updated_at, is_active, message_count
-		FROM conversations
-		WHERE user_id = $1 AND is_active = true
-		ORDER BY updated_at DESC
+		SELECT
+			c.id, c.user_id, c.title, c.created_at, c.updated_at, c.is_active, c.message_count,
+			COALESCE(
+				(SELECT content FROM messages WHERE conversation_id = c.id ORDER BY created_at DESC LIMIT 1),
+				''
+			) as last_message,
+			COALESCE(
+				(SELECT intent FROM messages WHERE conversation_id = c.id AND intent IS NOT NULL AND intent != '' ORDER BY created_at DESC LIMIT 1),
+				''
+			) as last_intent,
+			COALESCE(
+				(SELECT COUNT(*) > 0 FROM messages WHERE conversation_id = c.id AND mood = 'danger'),
+				false
+			) as has_threats
+		FROM conversations c
+		WHERE c.user_id = $1 AND c.is_active = true
+		ORDER BY c.updated_at DESC
 		LIMIT $2 OFFSET $3
 	`, userID, limit, offset)
 	if err != nil {
@@ -237,12 +258,18 @@ func (p *PostgresDB) GetUserConversations(ctx context.Context, userID uuid.UUID,
 	var conversations []models.Conversation
 	for rows.Next() {
 		var c models.Conversation
-		var title sql.NullString
-		if err := rows.Scan(&c.ID, &c.UserID, &title, &c.CreatedAt, &c.UpdatedAt, &c.IsActive, &c.MessageCount); err != nil {
+		var title, lastMessage, lastIntent sql.NullString
+		if err := rows.Scan(&c.ID, &c.UserID, &title, &c.CreatedAt, &c.UpdatedAt, &c.IsActive, &c.MessageCount, &lastMessage, &lastIntent, &c.HasThreats); err != nil {
 			continue
 		}
 		if title.Valid {
 			c.Title = title.String
+		}
+		if lastMessage.Valid {
+			c.LastMessage = lastMessage.String
+		}
+		if lastIntent.Valid {
+			c.LastIntent = lastIntent.String
 		}
 		conversations = append(conversations, c)
 	}

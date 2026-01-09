@@ -13,7 +13,7 @@ import (
 	"github.com/trackfy/api-gateway/internal/services"
 )
 
-func NewRouter(postgres *db.PostgresDB, redis *db.RedisDB, jwtManager *auth.JWTManager, fyEngine *services.FyEngineClient) http.Handler {
+func NewRouter(postgres *db.PostgresDB, redis *db.RedisDB, jwtManager *auth.JWTManager, fyEngine *services.FyEngineClient, fyAnalysis *services.FyAnalysisClient) http.Handler {
 	r := chi.NewRouter()
 
 	// Middleware global
@@ -35,6 +35,7 @@ func NewRouter(postgres *db.PostgresDB, redis *db.RedisDB, jwtManager *auth.JWTM
 
 	// Crear handler y middlewares
 	h := NewHandler(postgres, redis, jwtManager, fyEngine)
+	h.SetFyAnalysisClient(fyAnalysis)
 	authMw := middleware.NewAuthMiddleware(jwtManager, redis)
 	rateLimiter := middleware.NewRateLimiter(redis)
 

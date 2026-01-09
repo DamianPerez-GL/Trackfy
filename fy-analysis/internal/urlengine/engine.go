@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/rs/zerolog/log"
@@ -11,6 +12,17 @@ import (
 	"github.com/trackfy/fy-analysis/internal/correlation"
 	"github.com/trackfy/fy-analysis/internal/sync"
 )
+
+// normalizePhone normaliza un número de teléfono quitando espacios y caracteres especiales
+func normalizePhone(phone string) string {
+	// Quitar espacios, guiones, paréntesis
+	phone = strings.ReplaceAll(phone, " ", "")
+	phone = strings.ReplaceAll(phone, "-", "")
+	phone = strings.ReplaceAll(phone, "(", "")
+	phone = strings.ReplaceAll(phone, ")", "")
+	phone = strings.ReplaceAll(phone, ".", "")
+	return phone
+}
 
 // Engine es el motor principal de verificación de URLs, emails y teléfonos
 type Engine struct {
@@ -483,7 +495,7 @@ type ReportURLResponse struct {
 	IsNewReport bool   `json:"is_new_report"` // Si es el primer reporte de esta URL
 }
 
-// ReportURL permite a un usuario reportar una URL como sospechosa
+// ReportURL permite a un usuario reportar una URL, teléfono o email como sospechoso
 func (e *Engine) ReportURL(ctx context.Context, req *ReportURLRequest) *ReportURLResponse {
 	log.Info().
 		Str("url", req.URL).
@@ -491,30 +503,75 @@ func (e *Engine) ReportURL(ctx context.Context, req *ReportURLRequest) *ReportUR
 		Str("threat_type", req.ThreatType).
 		Msg("[Engine] Report URL request received")
 
-	if e.userReportsChecker == nil || !e.userReportsChecker.IsEnabled() {
-		log.Warn().Msg("[Engine] UserReports checker not enabled")
+	if e.userReportsChecker == nil {
+		log.Error().Msg("[Engine] UserReports checker is NIL")
 		return &ReportURLResponse{
 			Success:  false,
-			Message:  "Servicio de reportes no disponible",
+			Message:  "Servicio de reportes no disponible (nil)",
 			URLScore: 0,
 		}
 	}
 
-	// Normalizar y extraer dominio
-	indicators, err := e.normalizer.NormalizeInput(ctx, req.URL, checkers.InputTypeURL)
-	if err != nil {
+	if !e.userReportsChecker.IsEnabled() {
+		log.Error().Msg("[Engine] UserReports checker is DISABLED")
 		return &ReportURLResponse{
 			Success:  false,
-			Message:  "URL inválida: " + err.Error(),
+			Message:  "Servicio de reportes no disponible (disabled)",
 			URLScore: 0,
 		}
 	}
+
+	log.Info().Msg("[Engine] UserReports checker OK, detecting input type...")
+
+	// Detectar tipo de entrada y normalizar
+	var normalizedValue, domain string
+	inputType := e.normalizer.DetectInputType(req.URL)
+	log.Info().Str("input_type", string(inputType)).Str("raw", req.URL).Msg("[Engine] Input type detected")
+
+	switch inputType {
+	case checkers.InputTypePhone:
+		// Para teléfonos, normalizar quitando espacios y caracteres especiales
+		normalizedValue = normalizePhone(req.URL)
+		domain = "phone" // Pseudo-dominio para teléfonos
+		log.Info().Str("phone", normalizedValue).Msg("[Engine] Reporting phone number")
+
+	case checkers.InputTypeEmail:
+		// Para emails, usar el dominio del email
+		normalizedValue = strings.ToLower(strings.TrimSpace(req.URL))
+		parts := strings.Split(normalizedValue, "@")
+		if len(parts) == 2 {
+			domain = parts[1]
+		} else {
+			domain = "email"
+		}
+		log.Info().Str("email", normalizedValue).Msg("[Engine] Reporting email")
+
+	default:
+		// Para URLs, normalizar y extraer dominio
+		log.Info().Str("url", req.URL).Msg("[Engine] Treating as URL")
+		indicators, err := e.normalizer.NormalizeInput(ctx, req.URL, checkers.InputTypeURL)
+		if err != nil {
+			log.Error().Err(err).Msg("[Engine] URL normalization failed")
+			return &ReportURLResponse{
+				Success:  false,
+				Message:  "Entrada inválida: " + err.Error(),
+				URLScore: 0,
+			}
+		}
+		normalizedValue = indicators.Normalized
+		domain = indicators.Domain
+	}
+
+	log.Info().
+		Str("normalized", normalizedValue).
+		Str("domain", domain).
+		Msg("[Engine] Calling ReportURL on checker")
 
 	// Llamar al checker para registrar el reporte
 	success, message, score, err := e.userReportsChecker.ReportURL(
 		ctx,
-		indicators.Normalized,
-		indicators.Domain,
+		normalizedValue,
+		domain,
 		req.UserID,
 		req.ThreatType,
 		req.Description,
@@ -524,7 +581,7 @@ func (e *Engine) ReportURL(ctx context.Context, req *ReportURLRequest) *ReportUR
 	)
 
 	if err != nil {
-		log.Error().Err(err).Msg("[Engine] Error reporting URL")
+		log.Error().Err(err).Str("normalized", normalizedValue).Str("domain", domain).Msg("[Engine] Error reporting URL")
 		return &ReportURLResponse{
 			Success:  false,
 			Message:  "Error al procesar reporte",
@@ -535,7 +592,7 @@ func (e *Engine) ReportURL(ctx context.Context, req *ReportURLRequest) *ReportUR
 	log.Info().
 		Bool("success", success).
 		Int("score", score).
-		Str("url", indicators.Normalized).
+		Str("url", normalizedValue).
 		Msg("[Engine] URL report processed")
 
 	return &ReportURLResponse{

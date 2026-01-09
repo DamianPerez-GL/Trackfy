@@ -29,14 +29,27 @@ type ContextMessage struct {
 	Content string `json:"content"`
 }
 
+// AnalysisTrace información de trazabilidad del análisis
+type AnalysisTrace struct {
+	EntityType  string   `json:"entity_type,omitempty"`
+	EntityValue string   `json:"entity_value,omitempty"`
+	RiskScore   int      `json:"risk_score,omitempty"`
+	Verdict     string   `json:"verdict,omitempty"`
+	FoundInDB   bool     `json:"found_in_db"`
+	Source      string   `json:"source,omitempty"`
+	Reasons     []string `json:"reasons,omitempty"`
+	LatencyMs   int64    `json:"latency_ms,omitempty"`
+}
+
 // FyChatResponse respuesta del chat de Fy
 type FyChatResponse struct {
-	Response          string `json:"response"`
-	Mood              string `json:"mood"`
-	PIIDetected       bool   `json:"pii_detected"`
-	Intent            string `json:"intent"`
-	AnalysisPerformed bool   `json:"analysis_performed"`
-	Error             string `json:"error,omitempty"`
+	Response          string         `json:"response"`
+	Mood              string         `json:"mood"`
+	PIIDetected       bool           `json:"pii_detected"`
+	Intent            string         `json:"intent"`
+	AnalysisPerformed bool           `json:"analysis_performed"`
+	Trace             *AnalysisTrace `json:"trace,omitempty"`
+	Error             string         `json:"error,omitempty"`
 }
 
 func NewFyEngineClient(baseURL string, timeout time.Duration) *FyEngineClient {

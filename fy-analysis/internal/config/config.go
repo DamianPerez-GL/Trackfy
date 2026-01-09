@@ -21,8 +21,9 @@ type Config struct {
 	EnableDBSync     bool
 
 	// PostgreSQL Local DB
-	DatabaseURL   string
-	EnableLocalDB bool
+	DatabaseURL       string
+	EnableLocalDB     bool
+	EnableUserReports bool
 }
 
 // Load carga la configuración desde variables de entorno
@@ -44,8 +45,9 @@ func Load() *Config {
 		EnableDBSync:    getEnvAsBool("ENABLE_DB_SYNC", true),
 
 		// PostgreSQL Local DB
-		DatabaseURL:   getEnv("DATABASE_URL", ""),
-		EnableLocalDB: getEnvAsBool("ENABLE_LOCAL_DB", true),
+		DatabaseURL:       getEnv("DATABASE_URL", ""),
+		EnableLocalDB:     getEnvAsBool("ENABLE_LOCAL_DB", true),
+		EnableUserReports: getEnvAsBool("ENABLE_USER_REPORTS", true),
 	}
 }
 

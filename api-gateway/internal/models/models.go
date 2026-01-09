@@ -72,6 +72,9 @@ type Conversation struct {
 	UpdatedAt    time.Time `json:"updated_at"`
 	IsActive     bool      `json:"is_active"`
 	MessageCount int       `json:"message_count"`
+	LastMessage  string    `json:"last_message,omitempty"`
+	LastIntent   string    `json:"last_intent,omitempty"`
+	HasThreats   bool      `json:"has_threats"`
 }
 
 // Message representa un mensaje en una conversación

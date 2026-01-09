@@ -70,16 +70,22 @@ async def generate_response(
     if intent == "analysis" and analysis_result:
         # Formatear resultado del análisis
         reasons_text = "\n".join(f"- {r}" for r in analysis_result.get("reasons", []))
-        
+
+        # Info de trazabilidad
+        found_in_db = analysis_result.get("found_in_db", False)
+        source = analysis_result.get("source", "")
+
         prompt_addition = get_prompt_for_intent(
             intent="analysis",
             entity_type=analysis_result.get("type", "desconocido"),
             content=analysis_result.get("content", ""),
             risk_level=analysis_result.get("risk_score", 0),
             verdict=analysis_result.get("verdict", "desconocido"),
+            found_in_db="Sí (reportado en nuestra base de datos)" if found_in_db else "No",
+            source=source or "análisis heurístico",
             reasons=reasons_text or "- Sin información adicional"
         )
-        
+
         full_message = f"{user_message}\n\n{prompt_addition}"
         mood = get_mood_from_risk(analysis_result.get("risk_score", 0))
         
@@ -109,6 +115,11 @@ async def generate_response(
         )
         full_message = f"{user_message}\n\n{prompt_addition}"
         mood = "thinking"
+
+    elif intent == "report":
+        prompt_addition = get_prompt_for_intent(intent="report")
+        full_message = f"{user_message}\n\n{prompt_addition}"
+        mood = "safe"  # Mood positivo para mostrar botón de reportar
 
     else:  # smalltalk
         prompt_addition = get_prompt_for_intent(

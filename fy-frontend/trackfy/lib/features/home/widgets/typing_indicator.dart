@@ -1,13 +1,28 @@
+import 'dart:math';
 import 'package:flutter/material.dart';
 import '../../../core/theme/app_theme.dart';
 
+/// Mensajes graciosos mientras Fy "piensa"
+const List<String> _thinkingMessages = [
+  'Investigando',
+  'Mirando con lupa',
+  'Husmeando',
+  'Leyendo entre líneas',
+  'Consultando fuentes',
+  'Un momento',
+  'Verificando',
+  'Escaneando',
+  'Comprobando datos',
+  'Buscando pistas',
+];
+
 /// Indicador de que Fy está pensando - Sistema de diseño Trackfy
 class TypingIndicator extends StatefulWidget {
-  final String text;
+  final String? text;
 
   const TypingIndicator({
     super.key,
-    this.text = 'Analizando',
+    this.text,
   });
 
   @override
@@ -18,10 +33,14 @@ class _TypingIndicatorState extends State<TypingIndicator>
     with TickerProviderStateMixin {
   late List<AnimationController> _controllers;
   late List<Animation<double>> _animations;
+  late String _displayText;
 
   @override
   void initState() {
     super.initState();
+    // Seleccionar mensaje aleatorio si no se proporciona uno
+    _displayText = widget.text ??
+        _thinkingMessages[Random().nextInt(_thinkingMessages.length)];
     _controllers = List.generate(
       3,
       (index) => AnimationController(
@@ -109,7 +128,7 @@ class _TypingIndicatorState extends State<TypingIndicator>
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     Text(
-                      widget.text,
+                      _displayText,
                       style: AppTypography.body.copyWith(
                         color: AppColors.textSecondary,
                         fontSize: 14,

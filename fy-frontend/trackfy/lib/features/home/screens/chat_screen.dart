@@ -10,6 +10,7 @@ import '../widgets/typing_indicator.dart';
 import '../widgets/suggestion_chips.dart';
 import '../widgets/scam_details_modal.dart';
 import '../widgets/report_modal.dart';
+import 'history_screen.dart';
 
 /// Modelo de mensaje del chat
 class ChatMessage {
@@ -18,6 +19,7 @@ class ChatMessage {
   final bool isFromUser;
   final DateTime timestamp;
   final FyMessageType? _fyType;
+  final bool showReportButton;
 
   ChatMessage({
     required this.id,
@@ -25,6 +27,7 @@ class ChatMessage {
     required this.isFromUser,
     required this.timestamp,
     FyMessageType? fyType,
+    this.showReportButton = false,
   }) : _fyType = fyType;
 
   /// Tipo de mensaje de Fy (con default a normal)
@@ -33,7 +36,9 @@ class ChatMessage {
 
 /// Pantalla principal de Chat con Fy
 class ChatScreen extends StatefulWidget {
-  const ChatScreen({super.key});
+  final String? conversationId;
+
+  const ChatScreen({super.key, this.conversationId});
 
   @override
   State<ChatScreen> createState() => _ChatScreenState();
@@ -46,11 +51,60 @@ class _ChatScreenState extends State<ChatScreen> {
   bool _isTyping = false;
   bool _showActionMenu = false;
   bool _showSuggestions = true;
+  String? _currentConversationId;
 
   @override
   void initState() {
     super.initState();
-    _addWelcomeMessage();
+    _currentConversationId = widget.conversationId;
+    if (widget.conversationId != null) {
+      _loadConversation(widget.conversationId!);
+    } else {
+      _addWelcomeMessage();
+    }
+  }
+
+  Future<void> _loadConversation(String conversationId) async {
+    setState(() {
+      _isTyping = true;
+      _showSuggestions = false;
+    });
+
+    try {
+      final messages = await _chatService.getConversationMessages(conversationId);
+      setState(() {
+        _messages.clear();
+        for (final msg in messages) {
+          _messages.add(ChatMessage(
+            id: msg['id'] ?? DateTime.now().millisecondsSinceEpoch.toString(),
+            content: msg['content'] ?? '',
+            isFromUser: msg['role'] == 'user',
+            timestamp: DateTime.tryParse(msg['created_at'] ?? '') ?? DateTime.now(),
+            fyType: msg['role'] == 'assistant' ? _mapMoodToType(msg['mood']) : null,
+          ));
+        }
+        _isTyping = false;
+      });
+      _scrollToBottom();
+    } catch (e) {
+      setState(() {
+        _isTyping = false;
+      });
+      debugPrint('Error cargando conversación: $e');
+    }
+  }
+
+  FyMessageType? _mapMoodToType(String? mood) {
+    switch (mood) {
+      case 'danger':
+        return FyMessageType.danger;
+      case 'safe':
+        return FyMessageType.safe;
+      case 'warning':
+        return FyMessageType.warning;
+      default:
+        return FyMessageType.normal;
+    }
   }
 
   void _addWelcomeMessage() {
@@ -99,7 +153,10 @@ Envíame cualquier cosa sospechosa: un link, SMS, email o QR. Te digo en segundo
   }
 
   Future<void> _sendToApi(String userMessage) async {
-    final response = await _chatService.sendMessage(userMessage);
+    final response = await _chatService.sendMessage(
+      userMessage,
+      conversationId: _currentConversationId,
+    );
 
     if (!mounted) return;
 
@@ -107,12 +164,19 @@ Envíame cualquier cosa sospechosa: un link, SMS, email o QR. Te digo en segundo
       _isTyping = false;
 
       if (response.isSuccess) {
+        // Guardar el conversation_id para mensajes futuros
+        if (response.conversationId != null) {
+          _currentConversationId = response.conversationId;
+        }
+        // Detectar si el intent es "report" para mostrar botón de reportar
+        final isReportIntent = response.intent == 'report';
         _messages.add(ChatMessage(
           id: DateTime.now().millisecondsSinceEpoch.toString(),
           content: response.message,
           isFromUser: false,
           timestamp: DateTime.now(),
           fyType: _mapMessageType(response.type),
+          showReportButton: isReportIntent,
         ));
       } else {
         // En caso de error, mostrar mensaje de error amigable
@@ -272,7 +336,20 @@ Envíame cualquier cosa sospechosa: un link, SMS, email o QR. Te digo en segundo
                     _messages.clear();
                     _addWelcomeMessage();
                     _showSuggestions = true;
+                    _currentConversationId = null; // Nueva conversación
                   });
+                },
+                onHistory: () async {
+                  final result = await Navigator.of(context).push<String>(
+                    MaterialPageRoute(
+                      builder: (context) => const HistoryScreen(),
+                    ),
+                  );
+                  // Si se seleccionó una conversación, cargarla
+                  if (result != null && result.isNotEmpty) {
+                    _currentConversationId = result;
+                    _loadConversation(result);
+                  }
                 },
                 onMenu: () => debugPrint('Menu tap'),
               ),
@@ -306,6 +383,8 @@ Envíame cualquier cosa sospechosa: un link, SMS, email o QR. Te digo en segundo
                     }
 
                     // Mensaje de Fy con tipo (normal, danger, safe, warning)
+                    // Mostrar botón de reportar si es danger O si showReportButton es true
+                    final showReport = message.fyType == FyMessageType.danger || message.showReportButton;
                     return FyMessageBubble(
                       message: message.content,
                       timestamp: _formatTimestamp(message.timestamp),
@@ -313,7 +392,7 @@ Envíame cualquier cosa sospechosa: un link, SMS, email o QR. Te digo en segundo
                       onDetails: message.fyType == FyMessageType.danger
                           ? () => _showScamDetails(context)
                           : null,
-                      onReport: message.fyType == FyMessageType.danger
+                      onReport: showReport
                           ? () => _showReportModal(context)
                           : null,
                       onRescue: message.fyType == FyMessageType.danger

@@ -2,6 +2,7 @@ package api
 
 import (
 	"encoding/json"
+	"net"
 	"net/http"
 	"regexp"
 	"strconv"
@@ -467,11 +468,23 @@ type ChatRequest struct {
 	Message        string `json:"message"`
 }
 
+type ChatResponseTrace struct {
+	EntityType  string   `json:"entity_type,omitempty"`
+	EntityValue string   `json:"entity_value,omitempty"`
+	RiskScore   int      `json:"risk_score,omitempty"`
+	Verdict     string   `json:"verdict,omitempty"`
+	FoundInDB   bool     `json:"found_in_db"`
+	Source      string   `json:"source,omitempty"`
+	Reasons     []string `json:"reasons,omitempty"`
+	LatencyMs   int64    `json:"latency_ms,omitempty"`
+}
+
 type ChatResponse struct {
-	ConversationID string `json:"conversation_id"`
-	Response       string `json:"response"`
-	Mood           string `json:"mood"`
-	Intent         string `json:"intent"`
+	ConversationID string            `json:"conversation_id"`
+	Response       string            `json:"response"`
+	Mood           string            `json:"mood"`
+	Intent         string            `json:"intent"`
+	Trace          *ChatResponseTrace `json:"trace,omitempty"`
 }
 
 // Chat envía un mensaje a Fy
@@ -504,8 +517,9 @@ func (h *Handler) Chat(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	} else {
-		// Crear nueva conversación
-		conv, err := h.postgres.CreateConversation(r.Context(), userID, "")
+		// Crear nueva conversación con título basado en el primer mensaje
+		title := generateConversationTitle(req.Message)
+		conv, err := h.postgres.CreateConversation(r.Context(), userID, title)
 		if err != nil {
 			respondError(w, http.StatusInternalServerError, "db_error", "Failed to create conversation")
 			return
@@ -522,6 +536,9 @@ func (h *Handler) Chat(w http.ResponseWriter, r *http.Request) {
 				Content: msg.Content,
 			})
 		}
+		log.Debug().Int("context_messages", len(context)).Msg("[Chat] Contexto recuperado de Redis")
+	} else {
+		log.Debug().Msg("[Chat] Sin contexto previo en Redis")
 	}
 
 	// Guardar mensaje del usuario
@@ -572,12 +589,28 @@ func (h *Handler) Chat(w http.ResponseWriter, r *http.Request) {
 	isThreat := fyResp.Mood == "danger" || fyResp.Mood == "warning"
 	_ = h.postgres.UpdateUserStats(r.Context(), userID, fyResp.AnalysisPerformed, isThreat)
 
-	respondJSON(w, http.StatusOK, ChatResponse{
+	// Construir respuesta con trace si existe
+	resp := ChatResponse{
 		ConversationID: convID.String(),
 		Response:       fyResp.Response,
 		Mood:           fyResp.Mood,
 		Intent:         fyResp.Intent,
-	})
+	}
+
+	if fyResp.Trace != nil {
+		resp.Trace = &ChatResponseTrace{
+			EntityType:  fyResp.Trace.EntityType,
+			EntityValue: fyResp.Trace.EntityValue,
+			RiskScore:   fyResp.Trace.RiskScore,
+			Verdict:     fyResp.Trace.Verdict,
+			FoundInDB:   fyResp.Trace.FoundInDB,
+			Source:      fyResp.Trace.Source,
+			Reasons:     fyResp.Trace.Reasons,
+			LatencyMs:   fyResp.Trace.LatencyMs,
+		}
+	}
+
+	respondJSON(w, http.StatusOK, resp)
 }
 
 // ==================== HEALTH ====================
@@ -660,7 +693,38 @@ func getClientIP(r *http.Request) string {
 	if idx := strings.Index(ip, ","); idx != -1 {
 		ip = ip[:idx]
 	}
-	return strings.TrimSpace(ip)
+	ip = strings.TrimSpace(ip)
+	// Quitar el puerto si existe (RemoteAddr viene como "ip:port")
+	if host, _, err := net.SplitHostPort(ip); err == nil {
+		ip = host
+	}
+	return ip
+}
+
+// generateConversationTitle genera un título para la conversación basado en el primer mensaje
+func generateConversationTitle(message string) string {
+	// Limpiar espacios y saltos de línea
+	cleaned := strings.TrimSpace(message)
+	cleaned = strings.ReplaceAll(cleaned, "\n", " ")
+	cleaned = strings.ReplaceAll(cleaned, "\r", "")
+
+	// Truncar a máximo 50 caracteres
+	if len(cleaned) > 50 {
+		// Buscar el último espacio antes de 50 caracteres para no cortar palabras
+		lastSpace := strings.LastIndex(cleaned[:50], " ")
+		if lastSpace > 20 {
+			cleaned = cleaned[:lastSpace] + "..."
+		} else {
+			cleaned = cleaned[:47] + "..."
+		}
+	}
+
+	// Si el mensaje está vacío, usar un título genérico
+	if cleaned == "" {
+		return "Nueva conversación"
+	}
+
+	return cleaned
 }
 
 // ==================== REPORTS ====================

@@ -1,0 +1,158 @@
+============================================================
+  TRACKFY - ENTORNO HIBRIDO (Local + DB Produccion)
+============================================================
+
+Este modo levanta TODOS los servicios localmente, pero usa
+la BASE DE DATOS DE AMENAZAS de PRODUCCION (PostgreSQL).
+
+Util para:
+- Testear cambios en cualquier servicio (admin, dbsync, etc)
+- Usar datos reales de amenazas sin sincronizar localmente
+- Desarrollo con datos de produccion
+
+============================================================
+  ARQUITECTURA HIBRIDA
+============================================================
+
+  LOCAL (Docker)                    PRODUCCION (SSH Tunnel)
+  +-------------------+             +----------------------+
+  | api-gateway :8080 |             | PostgreSQL Threats   |
+  +-------------------+             | :5432 (tunneled)     |
+         |                          +----------------------+
+         v                                   ^
+  +-------------------+                      |
+  | fy-engine   :8082 |                      |
+  +-------------------+                      |
+         |                                   |
+         v                                   |
+  +-------------------+                      |
+  | fy-analysis :9090 +----------------------+
+  +-------------------+                      |
+         ^                                   |
+         |                                   |
+  +-------------------+                      |
+  | fy-dbsync   :9091 +----------------------+
+  +-------------------+                      |
+         ^                                   |
+         |                                   |
+  +-------------------+                      |
+  | fy-admin    :9092 +----------------------+
+  +-------------------+
+
+  +---------------------+
+  | postgres-gw   :5433 | (usuarios - LOCAL)
+  +---------------------+
+
+  +---------------------+
+  | redis         :6379 | (cache - LOCAL)
+  +---------------------+
+
+============================================================
+  PASO 1: TUNEL SSH A PRODUCCION (solo PostgreSQL)
+============================================================
+
+Solo necesitas el tunel a la base de datos de amenazas:
+
+  ssh -L 5432:localhost:5432 <usuario>@<servidor>
+
+En background:
+
+  ssh -fN -L 5432:localhost:5432 <usuario>@<servidor>
+
+============================================================
+  PASO 2: VERIFICAR CONEXION
+============================================================
+
+Con el tunel activo, verifica que puedes conectar:
+
+  # Verificar PostgreSQL
+  psql -h localhost -U trackfy -d fy_threats -c "SELECT COUNT(*) FROM threat_domains;"
+
+============================================================
+  PASO 3: LEVANTAR ENTORNO HIBRIDO
+============================================================
+
+  docker compose -f docker-compose.hybrid.yml up --build
+
+O en background:
+
+  docker compose -f docker-compose.hybrid.yml up --build -d
+
+============================================================
+  PASO 4: VERIFICAR SERVICIOS
+============================================================
+
+  # API Gateway
+  curl http://localhost:8080/health
+
+  # Fy-Engine
+  curl http://localhost:8082/health
+
+  # Fy-Analysis (conectado a BD produccion)
+  curl http://localhost:9090/health
+  curl http://localhost:9090/stats  # Debe mostrar datos reales
+
+  # Fy-DBSync (conectado a BD produccion)
+  curl http://localhost:9091/health
+
+  # Fy-Admin (conectado a BD produccion)
+  curl http://localhost:9092/api/health
+  Abrir: http://localhost:9092
+
+============================================================
+  COMANDOS UTILES
+============================================================
+
+  # Ver logs de todo
+  docker compose -f docker-compose.hybrid.yml logs -f
+
+  # Ver logs de un servicio especifico
+  docker compose -f docker-compose.hybrid.yml logs -f fy-admin
+
+  # Parar todo
+  docker compose -f docker-compose.hybrid.yml down
+
+  # Rebuild de un servicio
+  docker compose -f docker-compose.hybrid.yml up --build fy-admin
+
+  # Rebuild solo fy-admin sin parar otros
+  docker compose -f docker-compose.hybrid.yml up --build -d fy-admin
+
+============================================================
+  TROUBLESHOOTING
+============================================================
+
+ERROR: "connection refused" a puerto 5432
+  -> Verifica que el tunel SSH esta activo
+  -> Reconecta: ssh -L 5432:localhost:5432 <usuario>@<servidor>
+
+ERROR: "host.docker.internal" no resuelve
+  -> En Linux, asegurate de tener Docker 20.10+
+  -> El docker-compose.hybrid.yml ya incluye extra_hosts
+
+ERROR: fy-analysis/fy-admin no conecta a la BD
+  -> El tunel SSH debe estar activo ANTES de levantar docker
+  -> Verifica: docker logs fy-analysis
+
+ERROR: Tunel SSH se desconecta
+  -> Usa autossh para reconexion automatica:
+     autossh -M 0 -fN -L 5432:localhost:5432 <usuario>@<servidor>
+  -> O agrega ServerAliveInterval en ~/.ssh/config
+
+============================================================
+  SERVICIOS Y PUERTOS
+============================================================
+
+  SERVICIO         PUERTO    DESCRIPCION
+  ─────────────────────────────────────────────────────────
+  api-gateway      8080      Punto de entrada API
+  fy-engine        8082      Motor LLM (Python)
+  fy-analysis      9090      Analisis de amenazas (Go)
+  fy-dbsync        9091      Sincronizador feeds (Go)
+  fy-admin         9092      Panel administracion (Go)
+  postgres-gateway 5433      BD usuarios (local)
+  redis            6379      Cache (local)
+  ─────────────────────────────────────────────────────────
+  PostgreSQL       5432      BD amenazas (PRODUCCION via SSH)
+
+============================================================

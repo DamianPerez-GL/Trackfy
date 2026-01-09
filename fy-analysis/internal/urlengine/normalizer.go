@@ -62,6 +62,30 @@ func NewNormalizer() *Normalizer {
 	}
 }
 
+// DetectInputType detecta automáticamente el tipo de entrada (URL, email, teléfono)
+func (n *Normalizer) DetectInputType(input string) checkers.InputType {
+	input = strings.TrimSpace(input)
+
+	// Detectar teléfono: empieza con + o es todo dígitos (con posibles espacios/guiones)
+	cleaned := n.phoneRegex.ReplaceAllString(input, "")
+	if len(cleaned) >= 9 && len(cleaned) <= 15 {
+		// Verificar si parece un número de teléfono
+		if strings.HasPrefix(input, "+") || regexp.MustCompile(`^\d[\d\s\-()\.]*$`).MatchString(input) {
+			return checkers.InputTypePhone
+		}
+	}
+
+	// Detectar email: contiene @ y parece válido
+	if strings.Contains(input, "@") {
+		if _, err := mail.ParseAddress(input); err == nil {
+			return checkers.InputTypeEmail
+		}
+	}
+
+	// Por defecto, asumir URL
+	return checkers.InputTypeURL
+}
+
 // NormalizeInput es el punto de entrada unificado para normalizar cualquier tipo de input
 func (n *Normalizer) NormalizeInput(ctx context.Context, input string, inputType checkers.InputType) (*checkers.Indicators, error) {
 	switch inputType {

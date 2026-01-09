@@ -47,8 +47,11 @@ func main() {
 	// Crear cliente de Fy Engine
 	fyEngine := services.NewFyEngineClient(cfg.FyEngine.URL, cfg.FyEngine.Timeout)
 
+	// Crear cliente de Fy Analysis (para reportes)
+	fyAnalysis := services.NewFyAnalysisClient(cfg.FyAnalysis.URL, cfg.FyAnalysis.Timeout)
+
 	// Crear router
-	router := api.NewRouter(postgres, redis, jwtManager, fyEngine)
+	router := api.NewRouter(postgres, redis, jwtManager, fyEngine, fyAnalysis)
 
 	// Configurar servidor
 	server := &http.Server{

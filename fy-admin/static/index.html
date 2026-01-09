@@ -679,6 +679,7 @@
             <button class="tab" onclick="showTab('emails')">Emails</button>
             <button class="tab" onclick="showTab('phones')">Telefonos</button>
             <button class="tab" onclick="showTab('whitelist')">Whitelist</button>
+            <button class="tab" onclick="showTab('reports')">Reportes</button>
         </div>
 
         <!-- Dashboard Tab -->
@@ -928,6 +929,82 @@
                 </div>
             </div>
         </div>
+
+        <!-- Reports Tab -->
+        <div id="tab-reports" class="tab-content">
+            <!-- Stats Cards -->
+            <div class="grid" style="margin-bottom: 20px;">
+                <div class="card">
+                    <div class="card-title">URLs Reportadas</div>
+                    <div class="stat-value" id="reportsTotal">-</div>
+                    <div class="stat-label">total acumulado</div>
+                </div>
+                <div class="card">
+                    <div class="card-title">Pendientes</div>
+                    <div class="stat-value" id="reportsPending">-</div>
+                    <div class="stat-label">por revisar</div>
+                </div>
+                <div class="card">
+                    <div class="card-title">Confirmados</div>
+                    <div class="stat-value" id="reportsConfirmed">-</div>
+                    <div class="stat-label">amenazas reales</div>
+                </div>
+                <div class="card">
+                    <div class="card-title">Score Alto</div>
+                    <div class="stat-value" id="reportsHighScore">-</div>
+                    <div class="stat-label">score >= 70</div>
+                </div>
+            </div>
+
+            <!-- Top Reporters -->
+            <div class="grid" style="grid-template-columns: 1fr 1fr; margin-bottom: 20px;">
+                <div class="card">
+                    <div class="card-title" style="margin-bottom: 12px;">Reportes por Tipo de Amenaza</div>
+                    <div id="reportsByThreat"></div>
+                </div>
+                <div class="card">
+                    <div class="card-title" style="margin-bottom: 12px;">Top Reportadores</div>
+                    <div id="topReporters"></div>
+                </div>
+            </div>
+
+            <!-- Reports Table -->
+            <div class="table-container">
+                <div class="table-header">
+                    <span class="table-title">URLs Reportadas por Usuarios</span>
+                    <div class="table-actions">
+                        <input type="text" class="search-input" placeholder="Buscar URL o dominio..." id="searchReports" onkeyup="debounceSearch('reports')">
+                        <select class="search-input" style="width:140px" id="filterReportStatus" onchange="loadReports()">
+                            <option value="">Todos</option>
+                            <option value="pending">Pendientes</option>
+                            <option value="confirmed">Confirmados</option>
+                            <option value="rejected">Rechazados</option>
+                        </select>
+                    </div>
+                </div>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>URL/Dominio</th>
+                            <th>Tipo</th>
+                            <th>Score</th>
+                            <th>Reportes</th>
+                            <th>Reportadores</th>
+                            <th>Estado</th>
+                            <th>Ultimo</th>
+                        </tr>
+                    </thead>
+                    <tbody id="reportsTable"></tbody>
+                </table>
+                <div class="pagination">
+                    <span class="pagination-info" id="reportsPagInfo">-</span>
+                    <div class="pagination-btns">
+                        <button class="btn btn-secondary btn-sm" onclick="prevPage('reports')">← Anterior</button>
+                        <button class="btn btn-secondary btn-sm" onclick="nextPage('reports')">Siguiente →</button>
+                    </div>
+                </div>
+            </div>
+        </div>
     </main>
 
     <div class="toast" id="toast"><span id="toastMessage"></span></div>
@@ -937,7 +1014,8 @@
             domains: { offset: 0, limit: 25, total: 0 },
             emails: { offset: 0, limit: 25, total: 0 },
             phones: { offset: 0, limit: 25, total: 0 },
-            whitelist: { offset: 0, limit: 25, total: 0 }
+            whitelist: { offset: 0, limit: 25, total: 0 },
+            reports: { offset: 0, limit: 25, total: 0 }
         };
         let searchTimeout;
         let syncCountdowns = {}; // Store countdown data for each source
@@ -1344,6 +1422,94 @@
                 `).join('');
             }
             document.getElementById('whitelistPagInfo').textContent = `${s.offset + 1}-${Math.min(s.offset + s.limit, s.total)} de ${formatNum(s.total)}`;
+        }
+
+        async function loadReports() {
+            // Cargar stats primero
+            await loadReportsStats();
+
+            const s = state.reports;
+            const search = document.getElementById('searchReports').value;
+            const status = document.getElementById('filterReportStatus').value;
+            let url = `/api/data/reports?limit=${s.limit}&offset=${s.offset}`;
+            if (search) url += `&search=${encodeURIComponent(search)}`;
+            if (status) url += `&status=${status}`;
+
+            const data = await fetch(url).then(r => r.json());
+            s.total = data.total || 0;
+
+            const tbody = document.getElementById('reportsTable');
+            if (!data.data?.length) {
+                tbody.innerHTML = '<tr><td colspan="7" class="empty-state">No hay reportes</td></tr>';
+            } else {
+                tbody.innerHTML = data.data.map(d => {
+                    // Truncar URL si es muy larga
+                    const displayUrl = d.url.length > 50 ? d.url.substring(0, 47) + '...' : d.url;
+                    // Score badge color
+                    const scoreCls = d.aggregated_score >= 70 ? 'danger' : d.aggregated_score >= 40 ? 'warning' : 'info';
+                    // Status badge
+                    const statusCls = d.status === 'confirmed' ? 'success' : d.status === 'rejected' ? 'danger' : 'warning';
+                    const statusText = d.status === 'pending' ? 'Pendiente' : d.status === 'confirmed' ? 'Confirmado' : 'Rechazado';
+                    return `
+                    <tr>
+                        <td title="${d.url}">
+                            <strong>${d.domain}</strong><br>
+                            <span style="font-size:0.7rem;color:var(--text-secondary)">${displayUrl}</span>
+                        </td>
+                        <td>${d.threat_type ? threatBadge(d.threat_type) : '<span class="badge badge-info">-</span>'}</td>
+                        <td><span class="badge badge-${scoreCls}">${d.aggregated_score}</span></td>
+                        <td>${d.total_reports}</td>
+                        <td>${d.unique_reporters}</td>
+                        <td><span class="badge badge-${statusCls}">${statusText}</span>${d.promoted ? ' <span class="badge badge-success">DB</span>' : ''}</td>
+                        <td>${timeAgo(d.last_reported)}</td>
+                    </tr>
+                `}).join('');
+            }
+            document.getElementById('reportsPagInfo').textContent = `${s.offset + 1}-${Math.min(s.offset + s.limit, s.total)} de ${formatNum(s.total)}`;
+        }
+
+        async function loadReportsStats() {
+            try {
+                const stats = await fetch('/api/data/reports/stats').then(r => r.json());
+
+                document.getElementById('reportsTotal').textContent = formatNum(stats.total_reported_urls || 0);
+                document.getElementById('reportsPending').textContent = formatNum(stats.pending || 0);
+                document.getElementById('reportsConfirmed').textContent = formatNum(stats.confirmed || 0);
+                document.getElementById('reportsHighScore').textContent = formatNum(stats.high_score || 0);
+
+                // By threat type
+                const byThreat = document.getElementById('reportsByThreat');
+                if (stats.by_threat_type?.length) {
+                    byThreat.innerHTML = stats.by_threat_type.map(t => `
+                        <div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--border)">
+                            ${threatBadge(t.type)}
+                            <strong>${formatNum(t.count)}</strong>
+                        </div>
+                    `).join('');
+                } else {
+                    byThreat.innerHTML = '<div style="color:var(--text-secondary);text-align:center;padding:10px">Sin datos</div>';
+                }
+
+                // Top reporters
+                const topReporters = document.getElementById('topReporters');
+                if (stats.top_reporters?.length) {
+                    topReporters.innerHTML = stats.top_reporters.map(r => {
+                        const trustCls = r.trust_score >= 70 ? 'success' : r.trust_score >= 40 ? 'warning' : 'info';
+                        return `
+                        <div style="display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px solid var(--border)">
+                            <span style="font-size:0.75rem;font-family:'JetBrains Mono',monospace">${r.user_id}</span>
+                            <div style="display:flex;gap:8px;align-items:center">
+                                <span class="badge badge-${trustCls}">Trust: ${r.trust_score}</span>
+                                <span style="font-size:0.75rem">${r.total_reports} rep.</span>
+                            </div>
+                        </div>
+                    `}).join('');
+                } else {
+                    topReporters.innerHTML = '<div style="color:var(--text-secondary);text-align:center;padding:10px">Sin datos</div>';
+                }
+            } catch (e) {
+                console.error('Error loading reports stats:', e);
+            }
         }
 
         function prevPage(type) {
