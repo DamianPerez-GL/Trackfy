@@ -13,6 +13,15 @@ type Config struct {
 	JWT        JWTConfig
 	FyEngine   FyEngineConfig
 	FyAnalysis FyAnalysisConfig
+	Stripe     StripeConfig
+}
+
+type StripeConfig struct {
+	SecretKey     string
+	WebhookSecret string
+	PriceID       string
+	SuccessURL    string
+	CancelURL     string
 }
 
 type FyAnalysisConfig struct {
@@ -76,6 +85,13 @@ func Load() *Config {
 		FyAnalysis: FyAnalysisConfig{
 			URL:     getEnv("FY_ANALYSIS_URL", "http://fy-analysis:9090"),
 			Timeout: getDurationEnv("FY_ANALYSIS_TIMEOUT", 30*time.Second),
+		},
+		Stripe: StripeConfig{
+			SecretKey:     getEnv("STRIPE_SECRET_KEY", ""),
+			WebhookSecret: getEnv("STRIPE_WEBHOOK_SECRET", ""),
+			PriceID:       getEnv("STRIPE_PRICE_ID", ""),
+			SuccessURL:    getEnv("STRIPE_SUCCESS_URL", "trackfy://subscription/success"),
+			CancelURL:     getEnv("STRIPE_CANCEL_URL", "trackfy://subscription/cancel"),
 		},
 	}
 }

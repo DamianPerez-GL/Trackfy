@@ -22,6 +22,11 @@ class ApiConfig {
   static const String sendCodeEndpoint = '/auth/send-code';
   static const String verifyEndpoint = '/auth/verify';
 
+  // Endpoints de suscripción
+  static const String subscriptionStatusEndpoint = '/api/v1/subscription/status';
+  static const String subscriptionCheckoutEndpoint = '/api/v1/subscription/checkout';
+  static const String subscriptionPortalEndpoint = '/api/v1/subscription/portal';
+
   /// URLs completas
   static String get chatUrl => '$baseUrl$chatEndpoint';
   static String get reportUrl => '$baseUrl$reportEndpoint';
@@ -29,6 +34,11 @@ class ApiConfig {
   static String get registerUrl => '$baseUrl$registerEndpoint';
   static String get sendCodeUrl => '$baseUrl$sendCodeEndpoint';
   static String get verifyUrl => '$baseUrl$verifyEndpoint';
+
+  // URLs de suscripción
+  static String get subscriptionStatusUrl => '$baseUrl$subscriptionStatusEndpoint';
+  static String get subscriptionCheckoutUrl => '$baseUrl$subscriptionCheckoutEndpoint';
+  static String get subscriptionPortalUrl => '$baseUrl$subscriptionPortalEndpoint';
 
   /// Timeout para las peticiones HTTP (en segundos)
   static const int timeoutSeconds = 30;

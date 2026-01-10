@@ -36,6 +36,14 @@ class ChatService {
           type: _parseMessageType(data['mood']),
           conversationId: data['conversation_id'],
           intent: data['intent'],
+          messagesRemaining: data['messages_remaining'],
+          messagesLimit: data['messages_limit'],
+        );
+      } else if (response.statusCode == 429) {
+        // Límite de mensajes alcanzado
+        final data = jsonDecode(response.body);
+        return ChatResponse.error(
+          data['message'] ?? 'Límite de mensajes alcanzado',
         );
       } else {
         return ChatResponse.error(
@@ -122,6 +130,8 @@ class ChatResponse {
   final String? error;
   final String? conversationId;
   final String? intent;
+  final int? messagesRemaining;
+  final int? messagesLimit;
 
   ChatResponse._({
     required this.isSuccess,
@@ -130,6 +140,8 @@ class ChatResponse {
     this.error,
     this.conversationId,
     this.intent,
+    this.messagesRemaining,
+    this.messagesLimit,
   });
 
   factory ChatResponse.success({
@@ -137,6 +149,8 @@ class ChatResponse {
     MessageType type = MessageType.normal,
     String? conversationId,
     String? intent,
+    int? messagesRemaining,
+    int? messagesLimit,
   }) {
     return ChatResponse._(
       isSuccess: true,
@@ -144,6 +158,8 @@ class ChatResponse {
       type: type,
       conversationId: conversationId,
       intent: intent,
+      messagesRemaining: messagesRemaining,
+      messagesLimit: messagesLimit,
     );
   }
 

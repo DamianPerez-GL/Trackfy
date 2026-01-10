@@ -51,7 +51,7 @@ func main() {
 	fyAnalysis := services.NewFyAnalysisClient(cfg.FyAnalysis.URL, cfg.FyAnalysis.Timeout)
 
 	// Crear router
-	router := api.NewRouter(postgres, redis, jwtManager, fyEngine, fyAnalysis)
+	router := api.NewRouter(postgres, redis, jwtManager, fyEngine, fyAnalysis, cfg)
 
 	// Configurar servidor
 	server := &http.Server{

@@ -8,12 +8,13 @@ import (
 	chimiddleware "github.com/go-chi/chi/v5/middleware"
 	"github.com/go-chi/cors"
 	"github.com/trackfy/api-gateway/internal/auth"
+	"github.com/trackfy/api-gateway/internal/config"
 	"github.com/trackfy/api-gateway/internal/db"
 	"github.com/trackfy/api-gateway/internal/middleware"
 	"github.com/trackfy/api-gateway/internal/services"
 )
 
-func NewRouter(postgres *db.PostgresDB, redis *db.RedisDB, jwtManager *auth.JWTManager, fyEngine *services.FyEngineClient, fyAnalysis *services.FyAnalysisClient) http.Handler {
+func NewRouter(postgres *db.PostgresDB, redis *db.RedisDB, jwtManager *auth.JWTManager, fyEngine *services.FyEngineClient, fyAnalysis *services.FyAnalysisClient, cfg *config.Config) http.Handler {
 	r := chi.NewRouter()
 
 	// Middleware global
@@ -39,8 +40,15 @@ func NewRouter(postgres *db.PostgresDB, redis *db.RedisDB, jwtManager *auth.JWTM
 	authMw := middleware.NewAuthMiddleware(jwtManager, redis)
 	rateLimiter := middleware.NewRateLimiter(redis)
 
+	// Servicio y handler de Stripe
+	stripeService := services.NewStripeService(&cfg.Stripe)
+	subscriptionHandler := NewSubscriptionHandler(postgres, stripeService)
+
 	// Health check (sin auth)
 	r.Get("/health", h.Health)
+
+	// Webhook de Stripe (público, sin auth - necesita firma de Stripe)
+	r.Post("/webhook/stripe", subscriptionHandler.HandleWebhook)
 
 	// Rutas públicas de autenticación
 	r.Route("/auth", func(r chi.Router) {
@@ -64,6 +72,13 @@ func NewRouter(postgres *db.PostgresDB, redis *db.RedisDB, jwtManager *auth.JWTM
 			r.Get("/stats", h.GetMyStats)
 			r.Post("/logout", h.Logout)
 			r.Post("/logout-all", h.LogoutAll)
+		})
+
+		// Suscripción
+		r.Route("/subscription", func(r chi.Router) {
+			r.Get("/status", subscriptionHandler.GetStatus)
+			r.Post("/checkout", subscriptionHandler.CreateCheckout)
+			r.Post("/portal", subscriptionHandler.CreatePortal)
 		})
 
 		// Conversaciones

@@ -44,6 +44,12 @@ dependencies:
   # HTTP para llamadas a la API
   http: ^1.2.2
 
+  # URL Launcher para abrir Stripe Checkout en navegador
+  url_launcher: ^6.2.5
+
+  # Shared Preferences para almacenamiento local
+  shared_preferences: ^2.2.2
+
 dev_dependencies:
   flutter_test:
     sdk: flutter

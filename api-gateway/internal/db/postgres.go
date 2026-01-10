@@ -363,3 +363,122 @@ func (p *PostgresDB) GetUserStats(ctx context.Context, userID uuid.UUID) (*model
 	)
 	return stats, err
 }
+
+// ==================== SUBSCRIPTIONS ====================
+
+// GetSubscriptionStatus obtiene el estado de suscripción de un usuario
+func (p *PostgresDB) GetSubscriptionStatus(ctx context.Context, userID uuid.UUID) (*models.SubscriptionStatusResponse, error) {
+	var plan, status string
+	var messagesUsed, messagesLimit, messagesRemaining int
+	var isPremium bool
+	var periodEnd sql.NullTime
+	var stripeCustomerID sql.NullString
+
+	err := p.db.QueryRowContext(ctx, `
+		SELECT plan, status, messages_used, messages_limit, messages_remaining, is_premium, period_end, stripe_customer_id
+		FROM get_subscription_status($1)
+	`, userID).Scan(&plan, &status, &messagesUsed, &messagesLimit, &messagesRemaining, &isPremium, &periodEnd, &stripeCustomerID)
+
+	if err != nil {
+		return nil, err
+	}
+
+	resp := &models.SubscriptionStatusResponse{
+		Plan:              models.SubscriptionPlan(plan),
+		Status:            status,
+		MessagesUsed:      messagesUsed,
+		MessagesLimit:     messagesLimit,
+		MessagesRemaining: messagesRemaining,
+		IsPremium:         isPremium,
+		CanSendMessage:    messagesRemaining != 0, // -1 (ilimitado) o >0
+	}
+	if periodEnd.Valid {
+		resp.PeriodEnd = &periodEnd.Time
+	}
+
+	return resp, nil
+}
+
+// IncrementMessageCount incrementa el contador de mensajes y verifica límites
+func (p *PostgresDB) IncrementMessageCount(ctx context.Context, userID uuid.UUID) (*models.MessageCountResult, error) {
+	var success bool
+	var messagesUsed, messagesLimit, messagesRemaining int
+	var isPremium bool
+
+	err := p.db.QueryRowContext(ctx, `
+		SELECT success, messages_used, messages_limit, messages_remaining, is_premium
+		FROM increment_message_count($1)
+	`, userID).Scan(&success, &messagesUsed, &messagesLimit, &messagesRemaining, &isPremium)
+
+	if err != nil {
+		return nil, err
+	}
+
+	return &models.MessageCountResult{
+		Success:           success,
+		MessagesUsed:      messagesUsed,
+		MessagesLimit:     messagesLimit,
+		MessagesRemaining: messagesRemaining,
+		IsPremium:         isPremium,
+	}, nil
+}
+
+// UpgradeToPremium actualiza un usuario a premium
+func (p *PostgresDB) UpgradeToPremium(ctx context.Context, userID uuid.UUID, stripeCustomerID, stripeSubscriptionID string) error {
+	_, err := p.db.ExecContext(ctx, `SELECT upgrade_to_premium($1, $2, $3)`, userID, stripeCustomerID, stripeSubscriptionID)
+	return err
+}
+
+// CancelPremium cancela la suscripción premium
+func (p *PostgresDB) CancelPremium(ctx context.Context, userID uuid.UUID) error {
+	_, err := p.db.ExecContext(ctx, `SELECT cancel_premium($1)`, userID)
+	return err
+}
+
+// UpdateStripeCustomerID actualiza el stripe customer ID de un usuario
+func (p *PostgresDB) UpdateStripeCustomerID(ctx context.Context, userID uuid.UUID, stripeCustomerID string) error {
+	_, err := p.db.ExecContext(ctx, `
+		UPDATE subscriptions SET stripe_customer_id = $2, updated_at = NOW()
+		WHERE user_id = $1
+	`, userID, stripeCustomerID)
+	return err
+}
+
+// GetStripeCustomerID obtiene el stripe customer ID de un usuario
+func (p *PostgresDB) GetStripeCustomerID(ctx context.Context, userID uuid.UUID) (*string, error) {
+	var customerID sql.NullString
+	err := p.db.QueryRowContext(ctx, `
+		SELECT stripe_customer_id FROM subscriptions WHERE user_id = $1
+	`, userID).Scan(&customerID)
+	if err != nil {
+		return nil, err
+	}
+	if customerID.Valid {
+		return &customerID.String, nil
+	}
+	return nil, nil
+}
+
+// GetUserIDByStripeCustomer obtiene el user ID a partir del Stripe customer ID
+func (p *PostgresDB) GetUserIDByStripeCustomer(ctx context.Context, stripeCustomerID string) (*uuid.UUID, error) {
+	var userID uuid.UUID
+	err := p.db.QueryRowContext(ctx, `
+		SELECT user_id FROM subscriptions WHERE stripe_customer_id = $1
+	`, stripeCustomerID).Scan(&userID)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return nil, nil
+		}
+		return nil, err
+	}
+	return &userID, nil
+}
+
+// AddPaymentHistory añade un registro al historial de pagos
+func (p *PostgresDB) AddPaymentHistory(ctx context.Context, userID uuid.UUID, paymentIntentID, invoiceID string, amount int, currency, status, description string) error {
+	_, err := p.db.ExecContext(ctx, `
+		INSERT INTO payment_history (user_id, stripe_payment_intent_id, stripe_invoice_id, amount, currency, status, description)
+		VALUES ($1, $2, $3, $4, $5, $6, $7)
+	`, userID, paymentIntentID, invoiceID, amount, currency, status, description)
+	return err
+}

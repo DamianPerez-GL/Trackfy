@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/services/chat_service.dart';
+import '../../../core/services/subscription_service.dart';
+import '../../profile/screens/subscription_screen.dart';
 import '../widgets/chat_header.dart';
 import '../widgets/chat_input.dart';
 import '../widgets/fy_message_bubble.dart';
@@ -10,6 +12,8 @@ import '../widgets/typing_indicator.dart';
 import '../widgets/suggestion_chips.dart';
 import '../widgets/scam_details_modal.dart';
 import '../widgets/report_modal.dart';
+import '../widgets/message_limit_banner.dart';
+import '../widgets/limit_reached_modal.dart';
 import 'history_screen.dart';
 
 /// Modelo de mensaje del chat
@@ -48,20 +52,42 @@ class _ChatScreenState extends State<ChatScreen> {
   final ScrollController _scrollController = ScrollController();
   final List<ChatMessage> _messages = [];
   final ChatService _chatService = ChatService();
+  final SubscriptionService _subscriptionService = SubscriptionService();
   bool _isTyping = false;
   bool _showActionMenu = false;
   bool _showSuggestions = true;
   String? _currentConversationId;
 
+  // Estado de suscripción
+  int _messagesRemaining = 5;
+  int _messagesLimit = 5;
+
   @override
   void initState() {
     super.initState();
     _currentConversationId = widget.conversationId;
+    _loadSubscriptionStatus();
     if (widget.conversationId != null) {
       _loadConversation(widget.conversationId!);
     } else {
       _addWelcomeMessage();
     }
+  }
+
+  Future<void> _loadSubscriptionStatus() async {
+    final result = await _subscriptionService.getStatus();
+    if (result.isSuccess && result.data != null) {
+      setState(() {
+        _messagesRemaining = result.data!.messagesRemaining;
+        _messagesLimit = result.data!.messagesLimit;
+      });
+    }
+  }
+
+  void _navigateToSubscription() {
+    Navigator.of(context).push(
+      MaterialPageRoute(builder: (_) => const SubscriptionScreen()),
+    ).then((_) => _loadSubscriptionStatus());
   }
 
   Future<void> _loadConversation(String conversationId) async {
@@ -135,6 +161,15 @@ Envíame cualquier cosa sospechosa: un link, SMS, email o QR. Te digo en segundo
   void _handleSendMessage(String content) {
     if (content.trim().isEmpty) return;
 
+    // Verificar límite de mensajes (si no es ilimitado)
+    if (_messagesLimit != -1 && _messagesRemaining <= 0) {
+      LimitReachedModal.show(
+        context,
+        onUpgrade: _navigateToSubscription,
+      );
+      return;
+    }
+
     setState(() {
       _showSuggestions = false;
       _messages.add(ChatMessage(
@@ -168,6 +203,15 @@ Envíame cualquier cosa sospechosa: un link, SMS, email o QR. Te digo en segundo
         if (response.conversationId != null) {
           _currentConversationId = response.conversationId;
         }
+
+        // Actualizar contador de mensajes desde la respuesta
+        if (response.messagesRemaining != null) {
+          _messagesRemaining = response.messagesRemaining!;
+        }
+        if (response.messagesLimit != null) {
+          _messagesLimit = response.messagesLimit!;
+        }
+
         // Detectar si el intent es "report" para mostrar botón de reportar
         final isReportIntent = response.intent == 'report';
         _messages.add(ChatMessage(
@@ -179,10 +223,20 @@ Envíame cualquier cosa sospechosa: un link, SMS, email o QR. Te digo en segundo
           showReportButton: isReportIntent,
         ));
       } else {
+        // Verificar si es error de límite alcanzado
+        if (response.error?.contains('limit') == true || response.error?.contains('429') == true) {
+          _messagesRemaining = 0;
+          LimitReachedModal.show(
+            context,
+            onUpgrade: _navigateToSubscription,
+          );
+        }
         // En caso de error, mostrar mensaje de error amigable
         _messages.add(ChatMessage(
           id: DateTime.now().millisecondsSinceEpoch.toString(),
-          content: 'Lo siento, no pude procesar tu mensaje. Por favor, intenta de nuevo.',
+          content: response.error?.contains('limit') == true
+              ? 'Has alcanzado el límite de mensajes este mes. Actualiza a Premium para seguir chateando conmigo.'
+              : 'Lo siento, no pude procesar tu mensaje. Por favor, intenta de nuevo.',
           isFromUser: false,
           timestamp: DateTime.now(),
           fyType: FyMessageType.warning,
@@ -352,6 +406,12 @@ Envíame cualquier cosa sospechosa: un link, SMS, email o QR. Te digo en segundo
                   }
                 },
                 onMenu: () => debugPrint('Menu tap'),
+              ),
+              // Banner de límite de mensajes
+              MessageLimitBanner(
+                messagesRemaining: _messagesRemaining,
+                messagesLimit: _messagesLimit,
+                onUpgrade: _navigateToSubscription,
               ),
               // Chat area
               Expanded(

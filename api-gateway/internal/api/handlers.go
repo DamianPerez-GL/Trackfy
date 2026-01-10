@@ -480,11 +480,13 @@ type ChatResponseTrace struct {
 }
 
 type ChatResponse struct {
-	ConversationID string            `json:"conversation_id"`
-	Response       string            `json:"response"`
-	Mood           string            `json:"mood"`
-	Intent         string            `json:"intent"`
-	Trace          *ChatResponseTrace `json:"trace,omitempty"`
+	ConversationID    string             `json:"conversation_id"`
+	Response          string             `json:"response"`
+	Mood              string             `json:"mood"`
+	Intent            string             `json:"intent"`
+	Trace             *ChatResponseTrace `json:"trace,omitempty"`
+	MessagesRemaining int                `json:"messages_remaining"` // -1 = ilimitado
+	MessagesLimit     int                `json:"messages_limit"`     // 5 para free, -1 para premium
 }
 
 // Chat envía un mensaje a Fy
@@ -499,6 +501,27 @@ func (h *Handler) Chat(w http.ResponseWriter, r *http.Request) {
 
 	if strings.TrimSpace(req.Message) == "" {
 		respondError(w, http.StatusBadRequest, "empty_message", "Message is required")
+		return
+	}
+
+	// Verificar límite de mensajes ANTES de procesar
+	msgResult, err := h.postgres.IncrementMessageCount(r.Context(), userID)
+	if err != nil {
+		log.Error().Err(err).Str("user_id", userID.String()).Msg("[Chat] Error checking message limit")
+		respondError(w, http.StatusInternalServerError, "db_error", "Error verificando límite")
+		return
+	}
+
+	if !msgResult.Success {
+		// Límite alcanzado
+		log.Info().Str("user_id", userID.String()).Int("used", msgResult.MessagesUsed).Msg("[Chat] Message limit reached")
+		respondJSON(w, http.StatusTooManyRequests, map[string]interface{}{
+			"error":              "message_limit_reached",
+			"message":            "Has alcanzado el límite de mensajes este mes. Suscríbete a Premium para mensajes ilimitados.",
+			"messages_used":      msgResult.MessagesUsed,
+			"messages_limit":     msgResult.MessagesLimit,
+			"messages_remaining": 0,
+		})
 		return
 	}
 
@@ -591,10 +614,12 @@ func (h *Handler) Chat(w http.ResponseWriter, r *http.Request) {
 
 	// Construir respuesta con trace si existe
 	resp := ChatResponse{
-		ConversationID: convID.String(),
-		Response:       fyResp.Response,
-		Mood:           fyResp.Mood,
-		Intent:         fyResp.Intent,
+		ConversationID:    convID.String(),
+		Response:          fyResp.Response,
+		Mood:              fyResp.Mood,
+		Intent:            fyResp.Intent,
+		MessagesRemaining: msgResult.MessagesRemaining,
+		MessagesLimit:     msgResult.MessagesLimit,
 	}
 
 	if fyResp.Trace != nil {
@@ -657,17 +682,22 @@ func normalizePhone(phone string) string {
 		cleaned = "+" + cleaned[2:]
 	}
 
-	// Si no tiene código y son 9 dígitos, añadir +34
+	// Si no tiene código de país, intentar añadir uno por defecto
 	if !strings.HasPrefix(cleaned, "+") {
+		// Números españoles (9 dígitos empezando con 6, 7 o 9)
 		if len(cleaned) == 9 && (cleaned[0] == '6' || cleaned[0] == '7' || cleaned[0] == '9') {
 			cleaned = "+34" + cleaned
+		} else if len(cleaned) >= 7 && len(cleaned) <= 15 {
+			// Asumir que ya tiene código de país sin el +
+			cleaned = "+" + cleaned
 		} else {
 			return "" // Inválido
 		}
 	}
 
-	// Validar formato español
-	if strings.HasPrefix(cleaned, "+34") && len(cleaned) == 12 {
+	// Validar longitud internacional (mínimo 8 dígitos con +, máximo 16)
+	// E.164: máximo 15 dígitos + el símbolo +
+	if len(cleaned) >= 8 && len(cleaned) <= 16 {
 		return cleaned
 	}
 

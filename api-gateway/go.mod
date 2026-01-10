@@ -10,6 +10,7 @@ require (
 	github.com/lib/pq v1.10.9
 	github.com/redis/go-redis/v9 v9.4.0
 	github.com/rs/zerolog v1.31.0
+	github.com/stripe/stripe-go/v76 v76.25.0
 	golang.org/x/crypto v0.18.0
 )
 
